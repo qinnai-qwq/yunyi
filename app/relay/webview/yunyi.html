@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云驿 — Minecraft 联机中继</title>
+    <link rel="icon" href="Icon.png" type="image/x-icon">
+    <style>
+        :root {
+            --bg: #F3F5F8;
+            --surface: #FFFFFF;
+            --surface-alt: #FAFBFD;
+            --surface-hover: #F5F7FA;
+            --border: #E2E6EC;
+            --border-strong: #CFD5DE;
+            --text: #151A22;
+            --text-secondary: #5B6472;
+            --text-tertiary: #98A1AC;
+            --text-quaternary: #B8BFC8;
+            --rail: #181D27;
+            --rail-icon: #7C8598;
+            --rail-icon-active: #FFFFFF;
+            --rail-hover: rgba(255,255,255,.06);
+            --primary: #2C5FB3;
+            --primary-dark: #1E3F7A;
+            --primary-soft: #EAF0FB;
+            --primary-glow: rgba(44,95,179,0.15);
+            --relay: #2C5FB3;
+            --relay-soft: #EAF0FB;
+            --host: #0E9488;
+            --host-soft: #E4F5F3;
+            --room: #7C3AED;
+            --room-soft: #F0EBFC;
+            --success: #17A34A;
+            --success-soft: #E9F8EE;
+            --danger: #DC4545;
+            --danger-soft: #FCEAEA;
+            --warn: #B4720A;
+            --warn-soft: #FBF1DF;
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 7px;
+            --radius-xs: 5px;
+            --font-ui: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+            --font-mono: "Cascadia Code", "Consolas", "Segoe UI Mono", monospace;
+            /* Animation tokens */
+            --t-micro: 60ms; --t-fast: 120ms; --t-normal: 200ms; --t-slow: 350ms; --t-slower: 500ms;
+            --ease-out: cubic-bezier(0.16,1,0.3,1);
+            --ease-in: cubic-bezier(0.7,0,0.84,0);
+            --ease-standard: cubic-bezier(0.4,0,0.2,1);
+            --ease-bounce: cubic-bezier(0.34,1.56,0.64,1);
+            --ease-spring: cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        ::selection { background: var(--primary-soft); color: var(--primary-dark); }
+
+        .app {
+            width: 100%; height: 100%;
+            background: var(--surface);
+            overflow: hidden;
+            display: flex; flex-direction: column; position: relative;
+            animation: appEnter var(--t-slower) var(--ease-out) forwards;
+        }
+        @keyframes appEnter {
+            from { opacity: 0; transform: translateY(8px) scale(0.995); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ===== Titlebar ===== */
+        .titlebar {
+            height: 52px; flex: 0 0 auto;
+            display: flex; align-items: center;
+            padding: 0 10px 0 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface); position: relative; z-index: 50;
+            transition: background var(--t-normal) var(--ease-standard), box-shadow var(--t-normal) var(--ease-standard);
+        }
+        .brand {
+            display: flex; align-items: center; gap: 9px;
+            font-weight: 700; font-size: 15.5px; letter-spacing: .2px;
+            transition: transform var(--t-fast) var(--ease-out);
+        }
+        .brand:hover { transform: translateX(2px); }
+        .brand-mark {
+            width: 22px; height: 22px; border-radius: 6px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+            transition: transform var(--t-fast) var(--ease-bounce), box-shadow var(--t-fast) var(--ease-standard);
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+        .brand:hover .brand-mark { transform: rotate(-5deg) scale(1.08); }
+        .brand-mark svg { width: 13px; height: 13px; }
+        .brand small {
+            font-weight: 500; font-size: 11px;
+            color: var(--text-tertiary); margin-left: 2px;
+        }
+        .titlebar-spacer { flex: 1; }
+        .status-chip {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 12.5px; color: var(--text-secondary);
+            padding: 5px 10px; border-radius: 999px;
+            background: var(--surface-alt); border: 1px solid var(--border);
+            margin-right: 10px; cursor: default;
+            transition: all var(--t-fast) var(--ease-standard);
+        }
+        .status-chip:hover { border-color: var(--border-strong); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--success); flex: 0 0 auto; position: relative;
+            transition: all var(--t-normal) var(--ease-standard);
+        }
+        .dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid var(--success); opacity: 0; animation: dotPulse 2s ease-in-out infinite; }
+        .dot.warn { background: var(--warn); } .dot.warn::after { border-color: var(--warn); }
+        .dot.off { background: var(--text-quaternary); } .dot.off::after { display: none; }
+        @keyframes dotPulse { 0%,100% { opacity: 0; transform: scale(0.8); } 50% { opacity: 0.5; transform: scale(1); } }
+        .titlebar-btn {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: transparent; color: var(--text-secondary);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex: 0 0 auto;
+            transition: all var(--t-fast) var(--ease-out); position: relative; overflow: hidden;
+        }
+        .titlebar-btn:hover { color: var(--text); background: var(--surface-alt); }
+        .titlebar-btn.close:hover { background: var(--danger); color: #fff; }
+        .titlebar-btn svg { width: 13px; height: 13px; position: relative; z-index: 1; }
+
+        /* ===== Body / Rail ===== */
+        .body { flex: 1; display: flex; min-height: 0; }
+        .rail {
+            width: 76px; flex: 0 0 auto; background: var(--rail);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 16px 0;
+        }
+        .rail-group {
+            display: flex; flex-direction: column; gap: 4px;
+            width: 100%; align-items: center;
+        }
+        .rail-spacer { flex: 1; }
+        .rail-item {
+            width: 56px; height: 56px; border-radius: 12px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 5px;
+            color: var(--rail-icon); cursor: pointer;
+            background: transparent; border: none;
+            font-size: 11px; font-family: var(--font-ui); position: relative;
+        }
+        .rail-item svg { width: 19px; height: 19px; }
+        .rail-item:hover { color: #C4CCDA; }
+        .rail-item.active { color: var(--rail-icon-active); background: rgba(255,255,255,.06); }
+        .rail-item.active::before {
+            content: ""; position: absolute; left: -16px; top: 50%;
+            transform: translateY(-50%); width: 3px; height: 22px;
+            border-radius: 3px; background: var(--primary);
+        }
+        .rail-divider {
+            width: 32px; height: 1px;
+            background: rgba(255,255,255,.08); margin: 10px 0;
+        }
+        .rail-version {
+            color: var(--text-tertiary); font-size: 10.5px; margin-top: 4px;
+        }
+
+        /* ===== Content / Views ===== */
+        .content { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+        .view { display: none; flex: 1; min-height: 0; flex-direction: column; opacity: 0; }
+        .view.active { display: flex; animation: viewEnter var(--t-slow) var(--ease-out) forwards; }
+        @keyframes viewEnter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .view-head {
+            padding: 22px 28px 16px;
+            display: flex; align-items: center; gap: 14px; flex: 0 0 auto;
+            position: relative; z-index: 10;
+        }
+        .back-btn {
+            width: 32px; height: 32px; border-radius: 9px;
+            border: 1px solid var(--border); background: var(--surface);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-secondary); flex: 0 0 auto;
+        }
+        .back-btn:hover { background: var(--surface-alt); }
+        .back-btn svg { width: 14px; height: 14px; }
+        .view-title { font-size: 19px; font-weight: 700; letter-spacing: .1px; }
+        .view-sub { font-size: 12.5px; color: var(--text-tertiary); margin-top: 2px; font-weight: 500; }
+        .view-head-spacer { flex: 1; }
+
+        .scroll { flex: 1; overflow-y: auto; padding: 0 28px 28px; }
+
+        /* ===== Buttons ===== */
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            border: none; border-radius: 9px; padding: 9px 15px;
+            font-family: var(--font-ui); font-size: 13px;
+            font-weight: 600; cursor: pointer; transition: .15s;
+        }
+        .btn svg { width: 14px; height: 14px; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-ghost {
+            background: var(--surface-alt); color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { border-color: var(--border-strong); color: var(--text); }
+        .btn-danger { background: var(--danger-soft); color: var(--danger); border: 1px solid transparent; }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-sm { padding: 6px 11px; font-size: 12px; border-radius: 7px; }
+        .btn-sm svg { width: 12px; height: 12px; }
+
+        /* ===== Stats Modules ===== */
+        .stats-modules {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 14px; margin-bottom: 22px;
+        }
+        .stat-module {
+            background: var(--surface-alt); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 16px 18px;
+        }
+        .stat-module .module-title {
+            font-size: 15px; font-weight: 700; margin-bottom: 12px;
+            padding-bottom: 8px; border-bottom: 2px solid var(--border);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .stat-module .module-title .badge {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+        }
+        .stat-module.relay .module-title .badge { background: var(--relay); }
+        .stat-module.ports .module-title .badge { background: var(--room); }
+        .stat-module .stat-item {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; font-size: 13px;
+            border-bottom: 1px dashed var(--border);
+        }
+        .stat-module .stat-item:last-child { border-bottom: none; }
+        .stat-module .stat-item .label { color: var(--text-secondary); font-weight: 500; }
+        .stat-module .stat-item .value { font-family: var(--font-mono); font-weight: 600; }
+
+        /* ===== Relay IP + Port Pool duo ===== */
+        .relay-duo {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;
+        }
+        .relay-ip-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 16px 18px;
+        }
+        .relay-ip-panel .ip-title {
+            font-size: 13.5px; font-weight: 700; margin-bottom: 12px;
+            padding-bottom: 8px; border-bottom: 2px solid var(--border);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .relay-ip-panel .ip-title .badge { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--relay); }
+        .relay-ip-row {
+            display: flex; align-items: center; padding: 8px 0;
+            border-bottom: 1px dashed var(--border); gap: 10px;
+        }
+        .relay-ip-row:last-child { border-bottom: none; }
+        .relay-ip-row .ip-label {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+            color: var(--text-tertiary); width: 42px; flex: 0 0 auto;
+        }
+        .relay-ip-row .ip-value {
+            font-family: var(--font-mono); font-size: 13px; font-weight: 600; flex: 1;
+        }
+        .relay-ip-row .ip-edit {
+            font-family: var(--font-mono); font-size: 12px;
+            padding: 5px 8px; border-radius: 6px; width: 100%;
+            border: 1px solid var(--border); background: var(--surface);
+            color: var(--text);
+        }
+        .relay-ip-row .ip-edit:focus { outline: none; border-color: var(--primary); }
+        .relay-ip-row .ip-edit::placeholder { color: var(--text-tertiary); font-family: var(--font-ui); font-size: 11px; }
+        .relay-setup-hint {
+            font-size: 11px; color: var(--warn); margin-top: 8px; font-weight: 500;
+        }
+        .relay-ip-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+        /* ===== Panel ===== */
+        .panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); margin-bottom: 16px;
+            overflow: visible;
+        }
+        .panel-head {
+            display: flex; align-items: center;
+            padding: 14px 18px; border-bottom: 1px solid var(--border);
+        }
+        .panel-head h3 { margin: 0; font-size: 13.5px; font-weight: 700; }
+        .panel-head .view-sub { margin: 0 0 0 8px; }
+        .panel-body { padding: 14px 18px; }
+
+        /* ===== Role Cards (home quick actions) ===== */
+        .role-split {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+        }
+        .role-card {
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 16px; display: flex; flex-direction: column; gap: 10px;
+            cursor: pointer; border-left: 3px solid var(--border); transition: .12s;
+        }
+        .role-card.relay { border-left-color: var(--relay); }
+        .role-card.rooms { border-left-color: var(--room); }
+        .role-card:hover { background: var(--surface-alt); }
+        .role-card-top {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .role-card-title {
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 13.5px;
+        }
+        .role-badge {
+            width: 28px; height: 28px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+        }
+        .role-badge svg { width: 15px; height: 15px; }
+        .role-badge.relay { background: var(--relay-soft); color: var(--relay); }
+        .role-badge.rooms { background: var(--room-soft); color: var(--room); }
+        .role-badge.host { background: var(--host-soft); color: var(--host); }
+        .role-count { font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary); }
+        .role-card-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+
+        /* ===== KPI Grid ===== */
+        .kpi-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 14px; margin-bottom: 22px;
+        }
+        .kpi-card {
+            background: var(--surface-alt); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 16px 18px;
+        }
+        .kpi-top {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .kpi-label { font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+        .kpi-icon {
+            width: 26px; height: 26px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kpi-icon svg { width: 14px; height: 14px; }
+        .kpi-value { font-family: var(--font-mono); font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+        .kpi-value span { font-size: 12px; color: var(--text-tertiary); font-family: var(--font-ui); font-weight: 500; margin-left: 4px; }
+
+        /* ===== Room Cards ===== */
+        .list-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+        }
+        .create-card {
+            border: 1.5px dashed var(--border-strong); border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 8px; min-height: 230px;
+            cursor: pointer; color: var(--text-tertiary); transition: .15s;
+        }
+        .create-card:hover { border-color: var(--room); color: var(--room); background: var(--room-soft); }
+        .create-card svg { width: 22px; height: 22px; }
+        .create-card span { font-size: 13px; font-weight: 600; }
+
+        .room-card {
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 16px 16px 14px; position: relative; cursor: pointer;
+            border-left: 3px solid var(--room); transition: .12s;
+        }
+        .room-card:hover { background: var(--surface-alt); }
+        .room-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+        .room-name { font-weight: 700; font-size: 14px; }
+        .room-code {
+            font-family: var(--font-mono); font-size: 13px; color: var(--primary);
+            background: var(--primary-soft); padding: 3px 8px; border-radius: 5px;
+            margin-top: 6px; display: inline-flex; align-items: center; gap: 6px;
+            cursor: pointer; user-select: all;
+        }
+        .room-code .copy-hint {
+            font-size: 10px; color: var(--text-tertiary); font-family: var(--font-ui);
+            user-select: none;
+        }
+        .room-meta {
+            font-family: var(--font-mono); font-size: 11.5px;
+            color: var(--text-tertiary); margin-top: 6px;
+        }
+
+        .more-wrap { position: relative; flex: 0 0 auto; }
+        .item-more {
+            width: 26px; height: 26px; border-radius: 7px;
+            border: none; background: transparent; color: var(--text-tertiary);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .item-more:hover { background: var(--surface-alt); color: var(--text); }
+        .item-more svg { width: 15px; height: 15px; }
+
+        .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .pill {
+            font-size: 11px; font-weight: 600; padding: 4px 9px;
+            border-radius: 999px; background: var(--surface-alt);
+            color: var(--text-secondary); border: 1px solid var(--border);
+        }
+        .pill.on { background: var(--success-soft); color: var(--success); border-color: transparent; }
+        .pill.waiting { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+        .pill.closed { background: var(--surface-alt); color: var(--text-tertiary); }
+        .pill.accent { background: var(--room-soft); color: var(--room); border-color: transparent; }
+        .pill.relay-pill { background: var(--relay-soft); color: var(--relay); border-color: transparent; }
+        .pill.host-pill { background: var(--host-soft); color: var(--host); border-color: transparent; }
+
+        .room-stats {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 8px; margin-top: 14px; padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .stat-mini { text-align: center; }
+        .stat-mini .v { font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+        .stat-mini .l { font-size: 10.5px; color: var(--text-tertiary); margin-top: 2px; }
+
+        /* ===== Context Menu ===== */
+        .context-menu {
+            position: absolute; top: 34px; right: 0; z-index: 20;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; box-shadow: 0 12px 28px -8px rgba(20,30,50,.25);
+            width: 160px; padding: 6px; display: none;
+        }
+        .context-menu.show { display: block; }
+        .context-menu button {
+            width: 100%; text-align: left; background: none; border: none;
+            padding: 8px 10px; border-radius: 7px;
+            font-family: var(--font-ui); font-size: 12.5px;
+            color: var(--text); cursor: pointer;
+        }
+        .context-menu button:hover { background: var(--surface-alt); }
+        .context-menu button.danger { color: var(--danger); }
+        .context-menu hr { border: none; border-top: 1px solid var(--border); margin: 5px 2px; }
+
+        /* ===== Room Detail ===== */
+        .detail-hero {
+            background: var(--surface-alt); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 18px;
+        }
+        .detail-hero-top {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .detail-addr {
+            font-family: var(--font-mono); font-size: 12.5px;
+            color: var(--text-secondary); margin-top: 6px;
+        }
+
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+        .tab {
+            padding: 10px 4px; margin-right: 20px;
+            font-size: 13px; font-weight: 600; color: var(--text-tertiary);
+            border-bottom: 2px solid transparent; cursor: pointer;
+        }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* ===== Player Table ===== */
+        .kv-table { width: 100%; border-collapse: collapse; }
+        .kv-table td {
+            padding: 9px 4px; font-size: 12.5px;
+            border-bottom: 1px dashed var(--border);
+        }
+        .kv-table td:first-child { color: var(--text-tertiary); width: 130px; }
+        .kv-table td:last-child { font-family: var(--font-mono); }
+        .kv-table th {
+            text-align: left; padding: 8px 4px; font-size: 12px;
+            color: var(--text-tertiary); font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+        .player-row { transition: .1s; }
+        .player-row:hover { background: var(--surface-alt); }
+
+        /* ===== Progress Bar ===== */
+        .progress-wrap { margin: 10px 0; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+        .progress-label span:first-child { color: var(--text-secondary); font-weight: 500; }
+        .progress-label span:last-child { font-family: var(--font-mono); color: var(--text-tertiary); }
+        .progress-bar {
+            height: 8px; border-radius: 999px; background: var(--border);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 999px; background: var(--primary);
+            transition: width .3s;
+        }
+        .progress-fill.warn { background: var(--warn); }
+        .progress-fill.danger { background: var(--danger); }
+
+        /* ===== Log ===== */
+        .log-line {
+            font-family: var(--font-mono); font-size: 12px;
+            color: var(--text-secondary); padding: 7px 0;
+            border-bottom: 1px dashed var(--border); display: flex; gap: 10px;
+        }
+        .log-line:last-child { border-bottom: none; }
+        .log-time { color: var(--text-tertiary); flex: 0 0 auto; }
+
+        /* ===== Connection List ===== */
+        .conn-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px dashed var(--border);
+        }
+        .conn-item:last-child { border-bottom: none; }
+        .conn-info { display: flex; align-items: center; gap: 10px; }
+        .conn-info .name { font-weight: 600; font-size: 13px; }
+        .conn-info .addr { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-tertiary); }
+
+        /* ===== Empty ===== */
+        .empty {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 70px 20px;
+            color: var(--text-tertiary); gap: 10px;
+        }
+        .empty svg { width: 34px; height: 34px; opacity: .5; }
+        .empty span { font-size: 13px; }
+
+        /* ===== Settings ===== */
+        .settings-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 4px; border-bottom: 1px solid var(--border);
+        }
+        .settings-row:last-child { border-bottom: none; }
+        .settings-label { font-size: 13px; font-weight: 600; }
+        .settings-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 3px; font-weight: 500; }
+        .switch {
+            width: 38px; height: 22px; border-radius: 999px;
+            background: var(--border-strong); position: relative;
+            cursor: pointer; flex: 0 0 auto;
+        }
+        .switch.on { background: var(--primary); }
+        .switch::after {
+            content: ""; position: absolute; top: 2px; left: 2px;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: #fff; transition: .15s;
+            box-shadow: 0 1px 2px rgba(0,0,0,.2);
+        }
+        .switch.on::after { left: 18px; }
+
+        .config-table { width: 100%; border-collapse: collapse; }
+        .config-table td {
+            padding: 10px 8px; font-size: 12.5px;
+            border-bottom: 1px dashed var(--border);
+        }
+        .config-table td:first-child { color: var(--text-tertiary); width: 180px; font-weight: 500; }
+        .config-table td:last-child { font-family: var(--font-mono); font-weight: 600; }
+
+        /* ===== Modal ===== */
+        .modal-overlay {
+            position: absolute; inset: 0;
+            background: rgba(13,18,28,.5); display: none;
+            align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            width: 440px; max-height: 80%; overflow-y: auto;
+            background: var(--surface); border-radius: 16px;
+            box-shadow: 0 24px 60px -12px rgba(10,15,25,.4);
+        }
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; border-bottom: 1px solid var(--border);
+        }
+        .modal-head h2 { margin: 0; font-size: 15.5px; font-weight: 700; }
+        .modal-close {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: none; background: var(--surface-alt);
+            color: var(--text-secondary); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-close svg { width: 13px; height: 13px; }
+        .modal-close:hover { background: var(--border); }
+        .modal-body { padding: 18px 20px; }
+        .modal-footer {
+            padding: 14px 20px; border-top: 1px solid var(--border);
+            display: flex; justify-content: flex-end; gap: 8px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; font-size: 12.5px; font-weight: 600;
+            color: var(--text-secondary); margin-bottom: 6px;
+        }
+        .form-hint { font-size: 11.5px; color: var(--text-tertiary); margin-top: 5px; font-weight: 500; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-input, .form-select {
+            width: 100%; font-family: var(--font-mono); font-size: 12.5px;
+            padding: 9px 11px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface-alt);
+            color: var(--text);
+        }
+        .form-input::placeholder { color: var(--text-tertiary); font-family: var(--font-ui); }
+        .form-input:focus, .form-select:focus {
+            outline: none; border-color: var(--primary); background: var(--surface);
+        }
+        .form-select { font-family: var(--font-ui); }
+        .form-switch-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px solid var(--border);
+        }
+        .form-switch-row:last-child { border-bottom: none; }
+        .form-switch-label { font-size: 12.5px; font-weight: 600; }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: var(--rail); color: #fff; padding: 10px 20px;
+            border-radius: 999px; font-size: 13px; font-weight: 600;
+            z-index: 200; opacity: 0; transition: opacity .2s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+        /* ===== Empty state for lists ===== */
+        .tunnel-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px dashed var(--border);
+            font-size: 12.5px;
+        }
+        .tunnel-item:last-child { border-bottom: none; }
+        .tunnel-dir { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+
+        /* ===== Animation System ===== */
+        .scroll { scroll-behavior: smooth; }
+        .scroll::-webkit-scrollbar { width: 6px; }
+        .scroll::-webkit-scrollbar-track { background: transparent; }
+        .scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+        .scroll::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+        .btn { transition: all var(--t-fast) var(--ease-out); position: relative; overflow: hidden; }
+        .btn:active { transform: scale(0.97) !important; }
+        .btn svg { transition: transform var(--t-fast) var(--ease-out); }
+        .btn:hover svg { transform: scale(1.1); }
+        .btn-primary { box-shadow: 0 1px 3px var(--primary-glow); }
+        .btn-primary:hover { box-shadow: 0 4px 12px var(--primary-glow); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0) scale(0.97) !important; }
+        .btn-ghost:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(220,69,69,0.2); }
+
+        .rail-item { transition: all var(--t-fast) var(--ease-out); overflow: hidden; }
+        .rail-item::before { content: ''; position: absolute; inset: 0; border-radius: 12px; background: var(--rail-hover); transform: scale(0.8); opacity: 0; transition: all var(--t-fast) var(--ease-out); }
+        .rail-item:hover::before { transform: scale(1); opacity: 1; }
+        .rail-item svg { transition: transform var(--t-fast) var(--ease-out); }
+        .rail-item:hover svg { transform: scale(1.1); }
+        .rail-item.active::before { content: ""; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); width: 3px; height: 22px; border-radius: 3px; background: var(--primary); animation: activeIndicator var(--t-normal) var(--ease-out) forwards; }
+        @keyframes activeIndicator { from { height: 0; opacity: 0; } to { height: 22px; opacity: 1; } }
+
+        .stat-module { transition: all var(--t-normal) var(--ease-out); position: relative; overflow: hidden; }
+        .stat-module:hover { border-color: var(--border-strong); transform: scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .stat-module .module-title .badge { transition: transform var(--t-fast) var(--ease-bounce); }
+        .stat-module:hover .module-title .badge { transform: scale(1.3); }
+        .stat-module .stat-item { transition: all var(--t-fast) var(--ease-standard); }
+        .stat-module .stat-item:hover { padding-left: 4px; background: rgba(0,0,0,0.01); }
+        .stat-module .stat-item .value { transition: color var(--t-fast) var(--ease-standard); }
+        .stat-module .stat-item:hover .value { color: var(--primary); }
+
+        .kpi-card { transition: all var(--t-normal) var(--ease-out); position: relative; overflow: hidden; }
+        .kpi-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--primary-dark)); transform: scaleX(0); transform-origin: left; transition: transform var(--t-slow) var(--ease-out); }
+        .kpi-card:hover { border-color: var(--border-strong); transform: scale(1.015); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .kpi-card:hover::after { transform: scaleX(1); }
+        .kpi-icon { transition: all var(--t-fast) var(--ease-bounce); }
+        .kpi-card:hover .kpi-icon { transform: scale(1.15) rotate(5deg); }
+        .kpi-value { transition: all var(--t-fast) var(--ease-out); }
+        .kpi-card:hover .kpi-value { transform: scale(1.02); }
+
+        .panel { transition: all var(--t-normal) var(--ease-out); overflow: visible; }
+        .panel:hover { border-color: var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+        .panel-head { transition: background var(--t-fast) var(--ease-standard); }
+        .panel:hover .panel-head { background: var(--surface-alt); }
+        .kpi-grid, .stats-modules, .list-grid, .role-split, .relay-trio { padding: 4px 0; }
+
+        .relay-ip-panel { transition: all var(--t-normal) var(--ease-out); }
+        .relay-ip-panel:hover { border-color: var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+        .relay-ip-row { transition: all var(--t-fast) var(--ease-standard); }
+        .relay-ip-row:hover { padding-left: 4px; }
+        .relay-ip-row .ip-edit { transition: all var(--t-fast) var(--ease-standard); }
+        .relay-ip-row .ip-edit:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+        .relay-setup-hint { animation: hintPulse 3s ease-in-out infinite; }
+        @keyframes hintPulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+        .role-card { transition: all var(--t-normal) var(--ease-out); position: relative; overflow: hidden; }
+        .role-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%); background-size: 200% 200%; opacity: 0; transition: opacity var(--t-normal) var(--ease-standard); }
+        .role-card:hover { transform: scale(1.015); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: var(--border-strong); }
+        .role-card:hover::before { opacity: 1; animation: shimmer 1.5s ease-in-out; }
+        @keyframes shimmer { 0% { background-position: 200% 200%; } 100% { background-position: -200% -200%; } }
+        .role-badge { transition: all var(--t-fast) var(--ease-bounce); }
+        .role-card:hover .role-badge { transform: scale(1.15) rotate(-3deg); }
+
+        .room-card { transition: all var(--t-normal) var(--ease-out); overflow: hidden; }
+        .room-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(124,58,237,0.03) 50%, transparent 60%); background-size: 200% 200%; opacity: 0; }
+        .room-card:hover { transform: scale(1.015); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: var(--border-strong); }
+        .room-card:hover::before { opacity: 1; animation: shimmer 1.5s ease-in-out; }
+        .room-code { transition: all var(--t-fast) var(--ease-out); }
+        .room-code:hover { transform: translateY(-1px); box-shadow: 0 2px 8px var(--primary-glow); }
+        .create-card { transition: all var(--t-normal) var(--ease-out); position: relative; overflow: hidden; }
+        .create-card::before { content: ''; position: absolute; inset: 0; background: var(--room-soft); opacity: 0; transition: opacity var(--t-normal) var(--ease-standard); }
+        .create-card:hover { transform: scale(1.015); box-shadow: 0 8px 24px rgba(124,58,237,0.1); }
+        .create-card:hover::before { opacity: 1; }
+        .create-card svg { transition: transform var(--t-fast) var(--ease-bounce); }
+        .create-card:hover svg { transform: scale(1.2) rotate(90deg); }
+
+        .pill { transition: all var(--t-fast) var(--ease-out); cursor: default; }
+        .pill:hover { transform: translateY(-1px); }
+        .pill.on:hover { box-shadow: 0 2px 8px rgba(23,163,74,0.15); }
+        .pill.waiting:hover { box-shadow: 0 2px 8px rgba(180,114,10,0.15); }
+        .pill.accent:hover { box-shadow: 0 2px 8px rgba(124,58,237,0.15); }
+        .stat-mini { transition: transform var(--t-fast) var(--ease-out); }
+        .stat-mini:hover { transform: translateY(-2px); }
+        .stat-mini .v { transition: color var(--t-fast) var(--ease-standard); }
+        .stat-mini:hover .v { color: var(--primary); }
+
+        .context-menu { opacity: 0; transform: translateY(-8px) scale(0.95); transition: all var(--t-fast) var(--ease-out); transform-origin: top right; }
+        .context-menu.show { opacity: 1; transform: translateY(0) scale(1); animation: menuPop var(--t-fast) var(--ease-spring) forwards; }
+        @keyframes menuPop { from { opacity: 0; transform: translateY(-8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .context-menu button { transition: all var(--t-fast) var(--ease-out); }
+        .context-menu button:hover { background: var(--surface-alt); }
+        .context-menu button.danger:hover { background: var(--danger-soft); }
+
+        .tab { transition: all var(--t-fast) var(--ease-out); position: relative; }
+        .tab::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--primary); transform: scaleX(0); transform-origin: center; transition: transform var(--t-normal) var(--ease-out); }
+        .tab:hover { color: var(--text-secondary); }
+        .tab.active::after { transform: scaleX(1); }
+
+        .conn-item { transition: all var(--t-fast) var(--ease-standard); }
+        .conn-item:hover { padding-left: 8px; background: var(--surface-alt); }
+        .tunnel-item { transition: all var(--t-fast) var(--ease-standard); }
+        .tunnel-item:hover { padding-left: 8px; background: var(--surface-alt); }
+
+        .log-line { animation: logEnter var(--t-fast) var(--ease-out) forwards; }
+        .log-line:hover { padding-left: 4px; background: var(--surface-alt); }
+        @keyframes logEnter { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+
+        .modal-overlay { opacity: 0; transition: opacity var(--t-normal) var(--ease-standard); backdrop-filter: blur(4px); }
+        .modal-overlay.show { opacity: 1; }
+        .modal-overlay.show .modal { animation: modalEnter var(--t-slow) var(--ease-spring) forwards; }
+        @keyframes modalEnter { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .modal-close { transition: all var(--t-fast) var(--ease-out); }
+        .modal-close:hover { background: var(--border); color: var(--text); }
+        .modal-close:active { transform: scale(0.9); }
+
+        .form-input, .form-select { transition: all var(--t-fast) var(--ease-standard); }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+        .form-group:focus-within label { color: var(--primary); }
+
+        .toast { transform: translateX(-50%) translateY(20px); transition: all var(--t-normal) var(--ease-spring); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        .switch { transition: background var(--t-normal) var(--ease-standard); }
+        .switch::after { transition: all var(--t-normal) var(--ease-spring); }
+        .switch:active::after { transform: scale(0.9); }
+
+        .progress-fill { transition: width var(--t-slow) var(--ease-out); }
+        .progress-bar { position: relative; overflow: hidden; }
+        .progress-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: progressShine 2s ease-in-out infinite; }
+        @keyframes progressShine { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+        .progress-fill { position: relative; overflow: hidden; }
+        .progress-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: progressShine 2s ease-in-out infinite; }
+
+        .item-more { transition: all var(--t-fast) var(--ease-out); }
+        .item-more:hover { background: var(--surface-alt); color: var(--text); }
+        .item-more:active { transform: scale(0.9); }
+
+        .back-btn { transition: all var(--t-fast) var(--ease-out); }
+        .back-btn:hover { background: var(--surface-alt); border-color: var(--border-strong); transform: translateX(-2px); }
+        .back-btn:active { transform: translateX(-1px) scale(0.95); }
+
+        .empty { animation: emptyEnter var(--t-slow) var(--ease-out) forwards; }
+        @keyframes emptyEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .progress-label span:last-child { transition: color 0.2s; }
+
+        @keyframes numPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 20px var(--primary-glow); } 50% { box-shadow: 0 0 30px var(--primary-glow), 0 0 60px rgba(44,95,179,0.05); } }
+    </style>
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ===== Titlebar ===== -->
+    <div class="titlebar">
+        <div class="brand">
+            <div class="brand-mark">
+                <img src="Icon.png" width="20" height="20" style="display:block;">
+            </div>
+            云驿
+        </div>
+        <div class="titlebar-spacer"></div>
+        <div class="status-chip"><span class="dot" id="net-dot"></span><span id="net-status" style="font-size:11px;margin-right:12px;"></span><span class="dot off"></span><span id="status-text">加载中...</span></div>
+        <button class="titlebar-btn" onclick="minimizeWindow()" title="最小化">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="2" fill="currentColor"/></svg>
+        </button>
+        <button class="titlebar-btn close" onclick="closeWindow()" title="关闭">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+    </div>
+
+    <!-- ===== Body ===== -->
+    <div class="body">
+
+        <!-- Rail Navigation -->
+        <div class="rail">
+            <div class="rail-group">
+                <button class="rail-item active" data-view="home">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9h12v-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    主页
+                </button>
+                <button class="rail-item" data-view="relay">
+                    <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><circle cx="7.3" cy="7.25" r="1" fill="currentColor"/><circle cx="7.3" cy="16.75" r="1" fill="currentColor"/></svg>
+                    中继
+                </button>
+                <button class="rail-item" data-view="rooms">
+                    <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+                    房间
+                </button>
+            </div>
+            <div class="rail-spacer"></div>
+            <div class="rail-group">
+                <button class="rail-item" data-view="settings">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.4M12 18.6V21M4.9 6.5l1.7 1.7M17.4 15.8l1.7 1.7M3 12h2.4M18.6 12H21M4.9 17.5l1.7-1.7M17.4 8.2l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    设置
+                </button>
+            </div>
+            <div class="rail-version">v1.0.1</div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content">
+
+            <!-- ===== 主页 ===== -->
+            <div class="view active" id="view-home">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">主页</div>
+                        <div class="view-sub">云驿 Minecraft 联机中继服务器</div>
+                    </div>
+                    <div class="view-head-spacer"></div>
+                    <button class="btn btn-primary" onclick="openCreateRoomModal()">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        创建房间
+                    </button>
+                </div>
+                <div class="scroll">
+                    <!-- Stats -->
+                    <div class="stats-modules">
+                        <div class="stat-module relay">
+                            <div class="module-title"><span class="badge"></span> 中继服务器</div>
+                            <div class="stat-item"><span class="label">运行时长</span><span class="value" id="s-uptime">00:00:00</span></div>
+                            <div class="stat-item"><span class="label">活跃房间</span><span class="value" id="s-active-rooms">0</span></div>
+                            <div class="stat-item"><span class="label">活跃隧道</span><span class="value" id="s-active-tunnels">0</span></div>
+                            <div class="stat-item"><span class="label">累计转发流量</span><span class="value" id="s-bytes">0 B</span></div>
+                        </div>
+                        <div class="stat-module ports">
+                            <div class="module-title"><span class="badge"></span> 端口池</div>
+                            <div class="stat-item"><span class="label">已用 / 总量</span><span class="value" id="s-ports">0 / 1001</span></div>
+                            <div class="stat-item"><span class="label">活跃连接数</span><span class="value" id="s-connections">0</span></div>
+                            <div class="stat-item"><span class="label">累计房间</span><span class="value" id="s-total-rooms">0</span></div>
+                            <div class="stat-item"><span class="label">协议版本</span><span class="value">v1</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>快捷操作</h3><span class="view-sub">选择功能进入对应管理页</span></div>
+                        <div class="panel-body">
+                            <div class="role-split">
+                                <div class="role-card relay" onclick="showView('relay')">
+                                    <div class="role-card-top">
+                                        <div class="role-card-title">
+                                            <span class="role-badge relay">
+                                                <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+                                            </span>
+                                            中继服务器
+                                        </div>
+                                        <span class="role-count" id="home-relay-status">未启动</span>
+                                    </div>
+                                    <div class="role-card-desc">查看端口池使用情况、控制连接和数据隧道状态。中继服务器是云驿的核心，负责端口分配与字节转发。</div>
+                                </div>
+                                <div class="role-card rooms" onclick="showView('rooms')">
+                                    <div class="role-card-top">
+                                        <div class="role-card-title">
+                                            <span class="role-badge rooms">
+                                                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+                                            </span>
+                                            房间管理
+                                        </div>
+                                        <span class="role-count" id="home-room-count">0 个活跃</span>
+                                    </div>
+                                    <div class="role-card-desc">管理所有联机房间，查看连接码、玩家列表。房主创建房间后，朋友用连接码即可在 MC 中直接进入。</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Event Log -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>事件日志</h3><span class="view-sub">最近操作记录</span></div>
+                        <div class="panel-body" id="log-container">
+                            <div class="empty" style="padding:30px 20px;">
+                                <span style="font-size:12.5px;">暂无事件，请创建房间或等待玩家连接</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 中继服务器 ===== -->
+            <div class="view" id="view-relay">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">中继服务器</div>
+                        <div class="view-sub">端口池 · 控制连接 · 数据隧道</div>
+                    </div>
+                    <div class="view-head-spacer"></div>
+                    <button class="btn btn-ghost" onclick="refreshStats()">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v5h5M20 20v-5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 10A8 8 0 004.7 16.1M4 14a8 8 0 0015.3 3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        刷新
+                    </button>
+                    <button class="btn btn-primary" onclick="startRelayCheck()" id="btn-start-relay">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M6 4l14 8-14 8V4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        启动服务器
+                    </button>
+                    <button class="btn btn-danger" onclick="shutdownRelay()" id="btn-shutdown-relay" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v9M16 6.5a7.5 7.5 0 11-8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        停止服务器
+                    </button>
+                </div>
+                <div class="scroll">
+                    <!-- KPI -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span class="kpi-label">运行时长</span>
+                                <span class="kpi-icon" style="background:var(--warn-soft);color:var(--warn);">
+                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                </span>
+                            </div>
+                            <div class="kpi-value" id="kpi-uptime">00:00:00</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span class="kpi-label">活跃房间</span>
+                                <span class="kpi-icon" style="background:var(--room-soft);color:var(--room);">
+                                    <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
+                                </span>
+                            </div>
+                            <div class="kpi-value" id="kpi-rooms">0</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span class="kpi-label">活跃隧道</span>
+                                <span class="kpi-icon" style="background:var(--host-soft);color:var(--host);">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 17l5-6 4 4 7-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </span>
+                            </div>
+                            <div class="kpi-value" id="kpi-tunnels">0</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-top">
+                                <span class="kpi-label">转发流量</span>
+                                <span class="kpi-icon" style="background:var(--success-soft);color:var(--success);">
+                                    <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M9 12h6M12 9v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                </span>
+                            </div>
+                            <div class="kpi-value" id="kpi-bytes">0<span>B</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Server IP + Port Pool duo -->
+                    <div class="relay-duo">
+                        <!-- Server IP Panel -->
+                        <div class="relay-ip-panel" id="relay-ip-panel">
+                            <div class="ip-title" style="justify-content:space-between;">
+                                <span style="display:flex;align-items:center;gap:8px;"><span class="badge"></span> 服务器地址</span>
+                                <button class="btn btn-ghost btn-sm" id="btn-edit-ip" onclick="showEditIP()" style="display:none;">修改地址</button>
+                            </div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv6</span>
+                                <span class="ip-value" id="relay-ipv6-display">未配置</span>
+                            </div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv4</span>
+                                <span class="ip-value" id="relay-ipv4-display">未配置</span>
+                            </div>
+                        </div>
+                        <!-- Setup form (hidden when configured) -->
+                        <div class="relay-ip-panel" id="relay-ip-setup" style="display:none;">
+                            <div class="ip-title" style="justify-content:space-between;">
+                                <span style="display:flex;align-items:center;gap:8px;"><span class="badge"></span> 首次配置（必填）</span>
+                                <button class="btn btn-primary btn-sm" onclick="saveRelayIP()">保存并启动</button>
+                            </div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv6</span>
+                                <input class="ip-edit" autocomplete="off" id="setup-ipv6" type="text" placeholder="例如：2001:db8::1（必填）">
+                            </div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv4</span>
+                                <input class="ip-edit" autocomplete="off" id="setup-ipv4" type="text" placeholder="例如：1.2.3.4（可选）">
+                            </div>
+                            <div class="relay-setup-hint">⚠ 必须先配置 IPv6 地址才能启动中继服务</div>
+                        </div>
+                        <!-- Edit form (hidden by default) -->
+                        <div class="relay-ip-panel" id="relay-ip-edit" style="display:none;">
+                            <div class="ip-title"><span class="badge"></span> 修改地址</div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv6</span>
+                                <input class="ip-edit" autocomplete="off" id="edit-ipv6" type="text">
+                            </div>
+                            <div class="relay-ip-row">
+                                <span class="ip-label">IPv4</span>
+                                <input class="ip-edit" autocomplete="off" id="edit-ipv4" type="text">
+                            </div>
+                            <div class="relay-ip-actions">
+                                <button class="btn btn-primary btn-sm" onclick="saveRelayIP()">保存</button>
+                                <button class="btn btn-ghost btn-sm" onclick="cancelEditIP()">取消</button>
+                            </div>
+                        </div>
+                        <!-- Port Pool -->
+                        <div class="panel" style="margin-bottom:0;">
+                            <div class="panel-head"><h3>端口池使用</h3><span class="view-sub" id="port-pool-range">40000 – 41000</span></div>
+                            <div class="panel-body">
+                                <div class="progress-wrap">
+                                    <div class="progress-label"><span>已用端口</span><span id="port-pool-text">0 / 1001</span></div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="port-pool-bar" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Control Connections -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>控制连接</h3><span class="view-sub">房主 ↔ 中继的 TLS-PSK 常驻连接</span></div>
+                        <div class="panel-body" id="control-conns">
+                            <div class="empty" style="padding:30px 20px;">
+                                <span style="font-size:12.5px;">暂无控制连接，等待房主端接入</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Tunnels -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>数据隧道</h3><span class="view-sub">玩家 ↔ 中继 ↔ 房主的字节转发通道</span></div>
+                        <div class="panel-body" id="data-tunnels">
+                            <div class="empty" style="padding:30px 20px;">
+                                <span style="font-size:12.5px;">暂无活跃隧道</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 房间管理 ===== -->
+            <div class="view" id="view-rooms">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">房间管理</div>
+                        <div class="view-sub" id="rooms-subtitle">所有联机房间 · 连接码 · 玩家列表</div>
+                    </div>
+                    <div class="view-head-spacer"></div>
+                    <span id="host-conn-badge" style="display:none;align-items:center;gap:6px;font-size:12.5px;color:var(--host);margin-right:8px;">
+                        <span class="dot on" style="width:7px;height:7px;"></span>
+                        <span id="host-conn-badge-text"></span>
+                    </span>
+                    <button class="btn btn-ghost btn-sm" id="btn-host-disc" onclick="doHostDisconnect()" style="display:none;margin-right:6px;" title="断开远程中继">断开</button>
+                    <button class="btn btn-primary" onclick="openCreateRoomModal()">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        创建房间
+                    </button>
+                </div>
+                <div class="scroll">
+                    <div class="list-grid" id="room-grid">
+                        <div class="create-card" onclick="openCreateRoomModal()">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <span id="room-create-label">创建房间</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 房间详情 ===== -->
+            <div class="view" id="view-room-detail">
+                <div class="view-head">
+                    <button class="back-btn" id="detail-back">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div>
+                        <div class="view-title" id="detail-title">未选择</div>
+                        <div class="view-sub" id="detail-sub">请从房间列表进入</div>
+                    </div>
+                </div>
+                <div class="scroll">
+                    <div class="detail-hero">
+                        <div class="detail-hero-top">
+                            <div class="tag-row" style="margin-top:0;" id="detail-tags">
+                                <span class="pill on">运行中</span>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-ghost btn-sm" id="btn-copy-code">
+                                    <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 8v12a1.5 1.5 0 001.5 1.5H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                    复制连接码
+                                </button>
+                                <button class="btn btn-danger btn-sm" id="btn-close-room">关闭房间</button>
+                            </div>
+                        </div>
+                        <div class="detail-addr" id="detail-addr">—</div>
+                    </div>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="players">玩家列表</div>
+                        <div class="tab" data-tab="info">房间信息</div>
+                        <div class="tab" data-tab="tunnels">隧道状态</div>
+                    </div>
+                    <!-- Players Tab -->
+                    <div class="tab-panel" id="tab-players">
+                        <div class="panel">
+                            <div class="panel-body">
+                                <table class="kv-table">
+                                    <thead><tr><th>玩家 ID</th><th>连接时间</th><th>已发送</th><th>已接收</th></tr></thead>
+                                    <tbody id="player-table-body">
+                                        <tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px;">暂无玩家连接</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Info Tab -->
+                    <div class="tab-panel" id="tab-info" style="display:none;">
+                        <div class="panel">
+                            <div class="panel-body">
+                                <table class="kv-table">
+                                    <tr><td>房间 ID</td><td id="rinfo-id">—</td></tr>
+                                    <tr><td>房间名称</td><td id="rinfo-name">—</td></tr>
+                                    <tr><td>中继服务器</td><td id="rinfo-relayip">—</td></tr>
+                                    <tr><td>房主地址</td><td id="rinfo-hostaddr">—</td></tr>
+                                    <tr><td>连接码</td><td id="rinfo-code">—</td></tr>
+                                    <tr><td>分配端口</td><td id="rinfo-port">—</td></tr>
+                                    <tr><td>MC 端口</td><td id="rinfo-mcport">—</td></tr>
+                                    <tr><td>状态</td><td id="rinfo-status">—</td></tr>
+                                    <tr><td>玩家数</td><td id="rinfo-players">—</td></tr>
+                                    <tr><td>创建时间</td><td id="rinfo-time">—</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tunnels Tab -->
+                    <div class="tab-panel" id="tab-tunnels" style="display:none;">
+                        <div class="panel">
+                            <div class="panel-body" id="room-tunnel-list">
+                                <div class="empty" style="padding:30px 20px;">
+                                    <span style="font-size:12.5px;">该房间暂无活跃隧道</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 设置 ===== -->
+            <div class="view" id="view-settings">
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">设置</div>
+                        <div class="view-sub">中继服务器配置（只读，修改需编辑配置文件后重启）</div>
+                    </div>
+                </div>
+                <div class="scroll">
+                    <!-- Relay Config -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>中继服务器</h3></div>
+                        <div class="panel-body">
+                            <table class="config-table">
+                                <tr><td>IPv6 地址</td><td id="cfg-ipv6">未配置</td></tr>
+                                <tr><td>IPv4 地址</td><td id="cfg-ipv4">未配置</td></tr>
+                                <tr><td>控制端口</td><td id="cfg-cport">40000</td></tr>
+                                <tr><td>HTTP 端口</td><td id="cfg-hport">8080</td></tr>
+                                <tr><td>软件版本</td><td id="cfg-ver">1.0</td></tr>
+                                <tr><td>协议版本</td><td id="cfg-pver">1</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Port Pool Config -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>端口池</h3></div>
+                        <div class="panel-body">
+                            <table class="config-table">
+                                <tr><td>端口范围</td><td id="cfg-prange">40000 – 41000</td></tr>
+                                <tr><td>每房间最大玩家</td><td id="cfg-maxp">10</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Security Config -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>加密与安全</h3></div>
+                        <div class="panel-body">
+                            <div class="settings-row">
+                                <div><div class="settings-label">TLS-PSK 加密</div><div class="settings-desc">房主 ↔ 中继之间的控制连接与数据隧道均使用 TLS-PSK 加密</div></div>
+                                <div class="switch on" id="sw-tls"></div>
+                            </div>
+                            <div class="settings-row">
+                                <div><div class="settings-label">最低 TLS 版本</div><div class="settings-desc" id="cfg-tlsver">TLS 1.3</div></div>
+                            </div>
+                            <div class="settings-row">
+                                <div><div class="settings-label">心跳间隔</div><div class="settings-desc" id="cfg-hb">25 秒（用于维持 NAT 映射 + 存活检测）</div></div>
+                            </div>
+                            <div class="settings-row">
+                                <div><div class="settings-label">房间宽限期</div><div class="settings-desc" id="cfg-grace">45 秒（断线后端口保留时长）</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- About -->
+                    <div class="panel">
+                        <div class="panel-head"><h3>关于云驿</h3></div>
+                        <div class="panel-body">
+                            <p style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin:0;">
+                                <strong>云驿 Yún Yì</strong> — "驿"取古代驿站中转传递之意，"云"点出网络属性。<br>
+                                让没有公网 IP 的朋友，通过你的公网服务器加入 Minecraft 联机房间。<br>
+                                玩家无需安装任何额外软件，直接把连接码粘贴到 MC 客户端的"直接连接"即可。<br><br>
+                                <span style="color:var(--text-tertiary);">NetEngine 引擎 · Director 门面 · IOCP 异步 I/O · OpenSSL TLS-PSK</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- .content -->
+    </div><!-- .body -->
+
+    <!-- ===== Create Room Modal ===== -->
+    <!-- 网络检测弹窗 -->
+    <div class="modal-overlay" id="modal-net-check">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>网络环境检测</h2>
+                <button class="modal-close" onclick="closeModal('net-check')">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body" id="net-check-list"></div>
+            <div class="modal-footer" id="net-check-footer">
+                <button class="btn btn-ghost" onclick="closeModal('net-check')">取消</button>
+                <span style="font-size:12px;color:var(--text-tertiary);" id="net-check-progress">正在检测...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-create-room">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>创建房间</h2>
+                <button class="modal-close" onclick="closeModal('create-room')">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>房间名称</label>
+                    <input class="form-input" id="new-room-name" type="text" placeholder="例如：我的世界生存服" autocomplete="off" style="font-family:var(--font-ui);">
+                    <div class="form-hint">1–64 字符，可选。不填则自动生成名称。</div>
+                </div>
+                <div class="form-group">
+                    <label>中继服务器 IP</label>
+                    <input class="form-input" id="new-room-ip" type="text" placeholder="公网IPv6或IPv4地址" autocomplete="off" style="font-family:var(--font-ui);">
+                    <div class="form-hint">中继服务器的公网地址，用于生成连接码。留空则使用已配置的服务器地址。</div>
+                </div>
+                <div class="form-group">
+                    <label>本地 MC 端口</label>
+                    <input class="form-input" id="new-room-mcport" type="text" placeholder="25565" value="25565" autocomplete="off">
+                    <div class="form-hint">房主本机 Minecraft 服务端口（127.0.0.1 上监听的端口）</div>
+                </div>
+                <div class="form-hint" style="color:var(--text-secondary);background:var(--primary-soft);padding:10px 12px;border-radius:8px;">
+                    <strong>提示：</strong>创建后系统将从端口池自动分配一个公网端口，并生成连接码。房主将连接码分享给朋友即可。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('create-room')">取消</button>
+                <button class="btn btn-primary" onclick="createRoom()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+</div><!-- .app -->
+
+<script>
+    // ======================== API Base ========================
+    const API_BASE = 'http://127.0.0.1:8080/api/v1';
+    const HOST_API = 'http://127.0.0.1:8081/api/v1';
+
+    /** 根据 ip/method 构造 fetch URL：本地管理的始终走 127.0.0.1；
+     *  创建房间时如果填了远程 IP，则向该远程中继发请求 */
+    function remoteApiUrl(path) {
+        const ipInput = document.getElementById('new-room-ip');
+        if (ipInput) {
+            const remoteIp = ipInput.value.trim();
+            if (remoteIp && remoteIp !== '127.0.0.1' && remoteIp !== '::1') {
+                const wrapped = remoteIp.includes(':') ? ('[' + remoteIp + ']') : remoteIp;
+                return 'http://' + wrapped + ':8080' + path;
+            }
+        }
+        return API_BASE + path;
+    }
+
+    function apiLog(method, path, status, detail) {
+        var d = detail || '';
+        if (d.length > 100) d = d.substring(0, 100) + '...';
+        addLog(method + ' ' + path + ' → ' + status + (d ? ' | ' + d : ''));
+    }
+
+    async function apiGet(path) {
+        try {
+            const res = await fetch(API_BASE + path);
+            const data = await res.json();
+            apiLog('GET', path, res.status);
+            if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+            return data;
+        } catch (e) {
+            apiLog('GET', path, '失败', e.message);
+            return null;
+        }
+    }
+
+    async function apiPost(path, body) {
+        try {
+            const res = await fetch(API_BASE + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = (data.error && data.error.message) || res.statusText;
+                apiLog('POST', path, res.status, msg);
+                throw new Error(msg);
+            }
+            apiLog('POST', path, res.status, data.connectionCode || '成功');
+            return data;
+        } catch (e) {
+            if (!e.message.includes('→')) {
+                apiLog('POST', path, '失败', e.message);
+            }
+            showToast('请求失败: ' + e.message);
+            return null;
+        }
+    }
+
+    async function apiDelete(path) {
+        try {
+            const res = await fetch(API_BASE + path, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            apiLog('DELETE', path, res.status);
+            if (!res.ok) throw new Error((data.error && data.error.message) || res.statusText);
+            return data;
+        } catch (e) {
+            apiLog('DELETE', path, '失败', e.message);
+            showToast('请求失败: ' + e.message);
+            return null;
+        }
+    }
+
+    // ======================== Host Agent API (port 8081) ========================
+    async function fetchHostStatus() {
+        try {
+            const res = await fetch(HOST_API + '/host/status');
+            const data = await res.json();
+            const wasConnected = HOST_STATE.connected;
+            HOST_STATE.connected    = data.connected;
+            HOST_STATE.relayIp      = data.relayIp || '';
+            HOST_STATE.controlPort  = data.controlPort || 40000;
+            HOST_STATE.state        = data.state || 0;
+            HOST_STATE.localMcPort  = data.localMcPort || 25565;
+            HOST_STATE.assignedPort = data.assignedPort || 0;
+            // 如果断连，清空房间列表
+            if (wasConnected && !HOST_STATE.connected) {
+                rooms.clear();
+                renderAll();
+            }
+            return data;
+        } catch (e) {
+            HOST_STATE.connected = false;
+            return null;
+        }
+    }
+
+    async function hostConnect(relayIp, controlPort) {
+        try {
+            const res = await fetch(HOST_API + '/host/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ relayIp: relayIp, controlPort: controlPort })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error((data.error && data.error.message) || 'Connection failed');
+            addLog('已连接远程中继: ' + relayIp);
+            showToast('已连接: ' + relayIp);
+            await fetchHostStatus();
+            return true;
+        } catch (e) {
+            showToast('连接失败: ' + e.message);
+            addLog('连接中继失败: ' + e.message);
+            return false;
+        }
+    }
+
+    async function hostDisconnect() {
+        try {
+            await fetch(HOST_API + '/host/disconnect', { method: 'POST' });
+            HOST_STATE.connected = false;
+            HOST_STATE.relayIp = '';
+            addLog('已断开远程中继');
+            showToast('已断开连接');
+        } catch (e) {
+            showToast('断开失败: ' + e.message);
+        }
+        await fetchHostStatus();
+    }
+
+    // ======================== Data Layer (all from backend) ========================
+    const CONFIG = {
+        role: '',
+        publicIp: '',
+        relayIpv6: '',
+        relayIpv4: '',
+        relayConfigured: false,
+        portPoolStart: 40001,
+        portPoolEnd: 41000,
+        controlPort: 40000,
+        httpPort: 8080,
+        heartbeatIntervalMs: 25000,
+        roomGracePeriodMs: 45000,
+        maxPlayersPerRoom: 10,
+        version: 'v1.0.1',
+        protocolVersion: 1,
+        tlsVersion: 'TLS 1.3'
+    };
+
+    // ======================== Host Agent State ========================
+    const HOST_STATE = {
+        connected: false,
+        relayIp: '',
+        controlPort: 40000,
+        state: 0,       // ControlState enum
+        localMcPort: 25565,
+        assignedPort: 0
+    };
+
+    let relayRunning = false;
+    let menuCounter = 0;
+
+    // backend data (all default 0)
+    let engineStats = {
+        uptimeSeconds: 0, activeRooms: 0, totalRooms: 0,
+        activeTunnels: 0, totalConnections: 0,
+        portPoolUsed: 0, portPoolTotal: 0, bytesRelayed: 0
+    };
+    let rooms = new Map();
+    let eventLog = [];
+
+    function formatBytes(b) {
+        if (!b || b === 0) return '0 B';
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+        return (b / 1073741824).toFixed(2) + ' GB';
+    }
+
+    function formatUptime(seconds) {
+        const s = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    // ======================== Backend Sync ========================
+    async function fetchStats() {
+        const data = await apiGet('/stats');
+        if (data) {
+            engineStats = {
+                uptimeSeconds: data.uptimeSeconds || 0,
+                activeRooms: data.activeRooms || 0,
+                totalRooms: data.totalRooms || 0,
+                activeTunnels: data.activeTunnels || 0,
+                totalConnections: data.totalConnections || 0,
+                portPoolUsed: data.portPoolUsed || 0,
+                portPoolTotal: data.portPoolTotal || (CONFIG.portPoolEnd - CONFIG.portPoolStart + 1),
+                bytesRelayed: data.bytesRelayed || 0
+            };
+            startTime = Date.now();
+        }
+    }
+
+    async function fetchRooms() {
+        // 若 Host 已连接远程中继，从 Host API 取房间
+        if (HOST_STATE.connected) {
+            try {
+                const res = await fetch(HOST_API + '/host/rooms');
+                const data = await res.json();
+                if (data && data.rooms) {
+                    rooms.clear();
+                    data.rooms.forEach(r => {
+                        const tc = r.tunnelCount || r.playerCount || 0;
+                        const br = r.bytesRelayed || 0;
+                        rooms.set(r.roomId, {
+                            roomId: r.roomId,
+                            roomName: r.roomName,
+                            connectionCode: r.connectionCode,
+                            assignedPort: r.assignedPort,
+                            localMcPort: r.localMcPort || 25565,
+                            status: r.status || 'active',
+                            playerCount: r.playerCount || 0,
+                            relayIp: r.relayIp || HOST_STATE.relayIp || '',
+                            hostAddress: r.hostAddress || HOST_STATE.relayIp || '',
+                            players: Array.from({length: tc}, (_, i) => ({
+                                id: i, bytesSent: i === 0 ? br : 0, bytesRecv: 0
+                            })),
+                            tunnels: Array.from({length: tc}, (_, i) => ({
+                                playerId: i, roomName: r.roomName
+                            }))
+                        });
+                    });
+                }
+                return;
+            } catch (e) {
+                // Host API 不可达，回退到本地
+            }
+        }
+        const data = await apiGet('/rooms');
+        if (data && data.rooms) {
+            rooms.clear();
+            data.rooms.forEach(r => {
+                rooms.set(r.roomId, {
+                    roomId: r.roomId,
+                    roomName: r.roomName || '',
+                    relayIp: CONFIG.publicIp,
+                    connectionCode: r.connectionCode || '',
+                    assignedPort: r.assignedPort || 0,
+                    localMcPort: r.localMcPort || 0,
+                    status: r.status || 'waiting',
+                    playerCount: r.playerCount || 0,
+                    createdAt: r.createdAt || '',
+                    hostAddress: r.hostAddress || '',
+                    players: [],
+                    tunnels: []
+                });
+            });
+        }
+    }
+
+    async function fetchConfig() {
+        const data = await apiGet('/config');
+        if (data) {
+            CONFIG.role = data.role || CONFIG.role;
+            CONFIG.publicIp = data.publicIp || CONFIG.publicIp;
+            CONFIG.portPoolStart = data.portPoolStart || CONFIG.portPoolStart;
+            CONFIG.portPoolEnd = data.portPoolEnd || CONFIG.portPoolEnd;
+            CONFIG.controlPort = data.controlPort || CONFIG.controlPort;
+            CONFIG.httpPort = data.httpPort || CONFIG.httpPort;
+            CONFIG.heartbeatIntervalMs = data.heartbeatIntervalMs || CONFIG.heartbeatIntervalMs;
+            CONFIG.roomGracePeriodMs = data.roomGracePeriodMs || CONFIG.roomGracePeriodMs;
+            CONFIG.maxPlayersPerRoom = data.maxPlayersPerRoom || CONFIG.maxPlayersPerRoom;
+            engineStats.portPoolTotal = CONFIG.portPoolEnd - CONFIG.portPoolStart + 1;
+            updateConfigDisplay();
+        }
+    }
+
+    async function fetchRoomPlayers(roomId) {
+        const data = await apiGet('/rooms/' + roomId + '/players');
+        if (data && data.players) {
+            const room = rooms.get(roomId);
+            if (room) {
+                room.players = data.players.map(p => ({
+                    id: p.id,
+                    connectedAt: p.connectedAt || '',
+                    bytesSent: p.bytesSent || 0,
+                    bytesRecv: p.bytesRecv || 0
+                }));
+                room.playerCount = room.players.length;
+                room.tunnels = data.players.map(p => ({
+                    id: 'T' + p.id,
+                    playerId: p.id,
+                    direction: '玩家 → 中继 ↔ 房主 → MC',
+                    bytesForwarded: (p.bytesSent || 0) + (p.bytesRecv || 0),
+                    createdAt: p.connectedAt || ''
+                }));
+            }
+        }
+    }
+
+    // ======================== Room CRUD (via API) ========================
+    async function createRoomFromModal() {
+        const nameInput = document.getElementById('new-room-name');
+        const mcPortInput = document.getElementById('new-room-mcport');
+        const ipInput = document.getElementById('new-room-ip');
+        const name = nameInput.value.trim() || ('房间_' + Date.now());
+        const mcPortRaw = parseInt(mcPortInput.value) || 25565;
+
+        if (name.length > 64) {
+            showToast('❌ 房间名称不能超过 64 个字符（当前 ' + name.length + ' 个）');
+            return;
+        }
+        if (mcPortRaw < 1 || mcPortRaw > 65535) {
+            showToast('❌ MC 端口必须在 1-65535 范围内（当前 ' + mcPortRaw + '）');
+            return;
+        }
+        const mcPort = mcPortRaw;
+        const roomIp = ipInput.value.trim();
+        if (!roomIp) {
+            showToast('❌ 请输入中继服务器 IP 地址');
+            return;
+        }
+        if (!isValidPublicIP(roomIp)) {
+            showToast('❌ 中继服务器 IP 无效: ' + roomIp + '（需要公网地址）');
+            return;
+        }
+
+        // 统一走 Host API：后端自动处理连接 + 创建
+        showToast('正在连接 ' + roomIp + ' ...');
+        let result = null;
+        try {
+            const res = await fetch(HOST_API + '/rooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roomName: name, localMcPort: mcPort, relayIp: roomIp, controlPort: CONFIG.controlPort || 40000 })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = (data.error && data.error.message) || res.statusText;
+                apiLog('POST', '/rooms', res.status, msg);
+                throw new Error(msg);
+            }
+            apiLog('POST', '/rooms', res.status, data.connectionCode || '成功');
+            result = data;
+        } catch (e) {
+            if (!e.message.includes('→')) {
+                apiLog('POST', '/rooms', '失败', e.message);
+            }
+            showToast('请求失败: ' + e.message);
+            return;
+        }
+
+        if (result) {
+            // 后端已自动连接成功，更新 HOST_STATE 保证后续 syncAll/fetchRooms 走 Host API
+            if (roomIp) {
+                HOST_STATE.connected = true;
+                HOST_STATE.relayIp = roomIp;
+            }
+            const assignedPort = result.assignedPort || 0;
+            // 直接使用后端返回的 connectionCode，前端不自己拼
+            const connectionCode = result.connectionCode || (roomIp + ':' + assignedPort);
+            const room = {
+                roomId: result.roomId,
+                roomName: result.roomName || name,
+                relayIp: roomIp,
+                connectionCode: connectionCode,
+                assignedPort: assignedPort,
+                localMcPort: result.localMcPort || mcPort,
+                status: result.status || 'waiting',
+                playerCount: result.playerCount || 0,
+                createdAt: result.createdAt || new Date().toISOString(),
+                hostAddress: result.hostAddress || '',
+                players: [],
+                tunnels: []
+            };
+            rooms.set(room.roomId, room);
+            addLog('创建房间: ' + room.roomName + ' | 连接码: ' + room.connectionCode);
+            showToast('房间已创建: ' + room.connectionCode);
+        }
+
+        nameInput.value = '';
+        mcPortInput.value = '25565';
+        ipInput.value = '';
+        closeModal('create-room');
+        await syncAll();
+        renderAll();
+    }
+
+    async function closeRoomById(roomId) {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        await apiDelete('/rooms/' + roomId);
+        room.status = 'closed';
+        addLog('关闭房间: ' + room.roomName + ' | 端口 ' + room.assignedPort + ' 已回收');
+        showToast('房间已关闭: ' + room.roomName);
+        renderAll();
+    }
+
+    async function forceCloseRoomById(roomId) {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        await apiDelete('/rooms/' + roomId);
+        room.status = 'closed';
+        room.players = [];
+        room.playerCount = 0;
+        room.tunnels = [];
+        addLog('强制关闭房间: ' + room.roomName);
+        showToast('房间已强制关闭');
+        renderAll();
+    }
+
+    function startRoomById(roomId) {
+        const room = rooms.get(roomId);
+        if (!room || room.status !== 'closed') return;
+        room.status = 'waiting';
+        addLog('启动房间: ' + room.roomName + ' | 连接码: ' + room.connectionCode);
+        showToast('房间已启动: ' + room.roomName);
+        renderAll();
+    }
+
+    function deleteRoomById(roomId) {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        const name = room.roomName;
+        rooms.delete(roomId);
+        addLog('删除房间: ' + name);
+        showToast('房间已删除: ' + name);
+        const detailView = document.getElementById('view-room-detail');
+        if (detailView.classList.contains('active') && document.getElementById('detail-title').textContent === name) {
+            showView('rooms');
+        }
+        renderAll();
+    }
+
+    // ======================== IP Validation ========================
+    function isValidPublicIP(ip) {
+        if (!ip) return false;
+        // IPv6 check
+        if (ip.includes(':')) {
+            const lower = ip.toLowerCase();
+            // reject loopback, link-local, multicast, unspecified
+            if (lower === '::1') return false;
+            if (lower.startsWith('fe80:')) return false;
+            if (lower.startsWith('ff')) return false;
+            if (lower === '::' || lower === '0:0:0:0:0:0:0:0') return false;
+            // simplified: accept if it has colons and isn't obviously private
+            return lower.includes(':');
+        }
+        // IPv4 check
+        const parts = ip.split('.');
+        if (parts.length !== 4) return false;
+        const nums = parts.map(p => parseInt(p, 10));
+        if (nums.some(n => isNaN(n) || n < 0 || n > 255)) return false;
+        // reject private/link-local (but allow 127.0.0.1 for local dev)
+        if (nums[0] === 10) return false;                      // class A private
+        if (nums[0] === 172 && nums[1] >= 16 && nums[1] <= 31) return false; // class B private
+        if (nums[0] === 192 && nums[1] === 168) return false;  // class C private
+        if (nums[0] === 169 && nums[1] === 254) return false;  // link-local
+        if (nums[0] === 0) return false;                       // "this network"
+        if (nums[0] >= 224) return false;                      // multicast/reserved
+        return true;
+    }
+
+    async function probeRelayIP(ip, port) {
+        const url = 'http://' + (ip.includes(':') ? '[' + ip + ']' : ip) + ':' + (port || 8080) + '/api/v1/ping';
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 5000);
+            const res = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) return 'HTTP ' + res.status;
+            const data = await res.json();
+            return (data && data.status === 'ok') ? true : ('响应异常: ' + JSON.stringify(data));
+        } catch (e) {
+            return e.message || '网络错误';
+        }
+    }
+
+    async function saveRelayIP() {
+        const setupPanel = document.getElementById('relay-ip-setup');
+        const editPanel = document.getElementById('relay-ip-edit');
+        const setupIpv6 = document.getElementById('setup-ipv6');
+        const setupIpv4 = document.getElementById('setup-ipv4');
+        const editIpv6 = document.getElementById('edit-ipv6');
+        const editIpv4 = document.getElementById('edit-ipv4');
+
+        let ipv6 = '', ipv4 = '';
+        if (setupPanel && setupPanel.style.display !== 'none') {
+            ipv6 = setupIpv6 ? setupIpv6.value.trim() : '';
+            ipv4 = setupIpv4 ? setupIpv4.value.trim() : '';
+        } else if (editPanel && editPanel.style.display !== 'none') {
+            ipv6 = editIpv6 ? editIpv6.value.trim() : '';
+            ipv4 = editIpv4 ? editIpv4.value.trim() : '';
+        }
+
+        if (!ipv6 && !CONFIG.relayConfigured) {
+            showToast('❌ IPv6 地址为必填项');
+            return;
+        }
+
+        // validate new IPs
+        if (ipv6 && !isValidPublicIP(ipv6)) {
+            showToast('❌ IPv6 不是有效的公网地址，请重新填写');
+            return;
+        }
+        if (ipv4 && !isValidPublicIP(ipv4)) {
+            showToast('❌ IPv4 不是有效的公网地址，请重新填写');
+            return;
+        }
+
+        // probe: 用 127.0.0.1 检测本地 relay 是否正常（relay 在本机）
+        const reachable = await probeRelayIP('127.0.0.1', CONFIG.httpPort);
+        if (!reachable) {
+            showToast('❌ 中继服务器未响应，请确认 relay 已启动');
+        }
+
+        CONFIG.relayIpv6 = ipv6 || CONFIG.relayIpv6;
+        CONFIG.relayIpv4 = ipv4 || CONFIG.relayIpv4;
+        CONFIG.relayConfigured = true;
+        CONFIG.publicIp = CONFIG.relayIpv6 || CONFIG.relayIpv4;
+
+        // ★ 同步到后端：POST /api/v1/config 通知 relay 更新公网 IP
+        var newPublicIp = CONFIG.publicIp;
+        if (newPublicIp) {
+            fetch(API_BASE + '/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ publicIp: newPublicIp })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d && d.status === 'ok') {
+                    addLog('后端 IP 已同步: ' + newPublicIp);
+                }
+            }).catch(function(e) {
+                addLog('后端 IP 同步失败: ' + e.message);
+            });
+        }
+
+        // 判断是首次配置（启动服务器）还是编辑地址（不启动）
+        const isSetup = setupPanel && setupPanel.style.display !== 'none';
+        if (isSetup) {
+            relayRunning = true;
+            addLog('服务器已启动: IPv6=' + CONFIG.relayIpv6 + (CONFIG.relayIpv4 ? ' IPv4=' + CONFIG.relayIpv4 : ''));
+            showToast('✅ 服务器已启动');
+        } else {
+            // 编辑地址，回到显示面板
+            document.getElementById('relay-ip-edit').style.display = 'none';
+            document.getElementById('relay-ip-panel').style.display = 'block';
+            addLog('服务器地址已更新: IPv6=' + CONFIG.relayIpv6 + (CONFIG.relayIpv4 ? ' IPv4=' + CONFIG.relayIpv4 : ''));
+            showToast('✅ 地址已保存');
+        }
+        await syncAll();
+        renderAll();
+    }
+
+    function cancelEditIP() {
+        document.getElementById('relay-ip-edit').style.display = 'none';
+        document.getElementById('relay-ip-panel').style.display = 'block';
+    }
+
+    function showEditIP() {
+        document.getElementById('relay-ip-panel').style.display = 'none';
+        const editPanel = document.getElementById('relay-ip-edit');
+        document.getElementById('edit-ipv6').value = CONFIG.relayIpv6 || '';
+        document.getElementById('edit-ipv4').value = CONFIG.relayIpv4 || '';
+        editPanel.style.display = 'block';
+    }
+
+    function shutdownRelay() {
+        // freeze current uptime
+        if (localStartTime > 0) {
+            frozenUptime += Math.floor((Date.now() - localStartTime) / 1000);
+        }
+        localStartTime = 0;
+        relayRunning = false;
+        rooms.forEach(r => { r.status = 'closed'; r.players = []; r.playerCount = 0; r.tunnels = []; });
+        addLog('中继服务器已停止');
+        showToast('服务器已停止');
+        renderAll();
+    }
+
+    function startRelay() {
+        if (!CONFIG.relayConfigured) {
+            showToast('请先配置服务器地址');
+            return;
+        }
+        localStartTime = Date.now();
+        relayRunning = true;
+        addLog('中继服务器已启动');
+        showToast('服务器已启动');
+        syncAll().then(() => renderAll());
+    }
+
+    function addLog(msg) {
+        eventLog.unshift({ time: new Date().toTimeString().slice(0, 8), msg: msg });
+        if (eventLog.length > 50) eventLog.pop();
+    }
+
+    // ======================== Sync All ========================
+    async function syncAll() {
+        if (CONFIG.role === 'host') {
+            await fetchConfig();
+        } else {
+            await Promise.all([fetchStats(), fetchRooms(), fetchConfig()]);
+        }
+        // 拉取 Host 状态（确保 HOST_STATE 最新，后续 fetchRooms 据此路由）
+        await fetchHostStatus().catch(() => {});
+    }
+
+    // ======================== Views ========================
+    function showView(name) {
+        document.querySelectorAll('.rail-item').forEach(b => {
+            b.classList.toggle('active', b.dataset.view === name);
+        });
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        const target = document.getElementById('view-' + name);
+        if (target) target.classList.add('active');
+        closeAllMenus();
+        if (name === 'rooms') {
+            syncAll().then(() => { renderHostPanel(); renderRoomGrid(); });
+        } else if (name === 'relay') {
+            syncAll().then(() => renderAll());
+        } else {
+            renderAll();
+        }
+    }
+
+    function showRoomDetail(roomId) {
+        const room = rooms.get(roomId);
+        if (!room) return;
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-room-detail').classList.add('active');
+        fetchRoomPlayers(roomId).then(() => renderRoomDetail(room));
+        closeAllMenus();
+    }
+
+    // ======================== Menu / Toast ========================
+    function toggleMenu(e, id) {
+        e.stopPropagation();
+        const menu = document.getElementById(id);
+        if (!menu) return;
+        const isOpen = menu.classList.contains('show');
+        closeAllMenus();
+        if (!isOpen) menu.classList.add('show');
+    }
+
+    function closeAllMenus() {
+        document.querySelectorAll('.context-menu').forEach(m => m.classList.remove('show'));
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function minimizeWindow() {
+        try { window.chrome.webview.postMessage('minimize'); } catch(e) {}
+    }
+
+    function closeWindow() {
+        try { window.chrome.webview.postMessage('close'); } catch(e) {}
+    }
+
+    async function copyText(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast('已复制: ' + text);
+        } catch (e) {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast('已复制: ' + text);
+        }
+    }
+
+    // ======================== Render ========================
+    function renderAll() {
+        renderHomeStats();
+        renderRelayKPI();
+        renderRelayConnections();
+        renderRelayTunnels();
+        renderRoomGrid();
+        renderLog();
+    }
+
+    function renderHomeStats() {
+        // uptime 由 1s 定时器实时更新，此处不覆盖
+        document.getElementById('s-active-rooms').textContent = engineStats.activeRooms;
+        document.getElementById('s-active-tunnels').textContent = engineStats.activeTunnels;
+        document.getElementById('s-bytes').textContent = formatBytes(engineStats.bytesRelayed);
+        document.getElementById('s-ports').textContent = engineStats.portPoolUsed + ' / ' + engineStats.portPoolTotal;
+        document.getElementById('s-connections').textContent = engineStats.totalConnections;
+        document.getElementById('s-total-rooms').textContent = engineStats.totalRooms;
+        document.getElementById('home-room-count').textContent = engineStats.activeRooms + ' 个活跃';
+        const homeStatus = document.getElementById('home-relay-status');
+        if (homeStatus) {
+            if (CONFIG.role === 'host') {
+                homeStatus.textContent = '已连接 → ' + (CONFIG.publicIp || '中继');
+            } else if (!CONFIG.relayConfigured) {
+                homeStatus.textContent = '未配置';
+            } else if (!relayRunning) {
+                homeStatus.textContent = '已停止';
+            } else {
+                homeStatus.textContent = '运行中';
+            }
+        }
+    }
+
+    function getAggregatedStats() {
+        return {
+            activeRooms: engineStats.activeRooms,
+            activeTunnels: engineStats.activeTunnels
+        };
+    }
+
+    function renderRelayKPI() {
+        const stats = getAggregatedStats();
+        // uptime 由 1s 定时器实时更新，此处不覆盖
+        document.getElementById('kpi-rooms').textContent = stats.activeRooms;
+        document.getElementById('kpi-tunnels').textContent = stats.activeTunnels;
+        document.getElementById('kpi-bytes').innerHTML = formatBytes(engineStats.bytesRelayed).replace(' ', '<span>') + '</span>';
+
+        // port pool
+        const total = engineStats.portPoolTotal;
+        const used = engineStats.portPoolUsed;
+        const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+        document.getElementById('port-pool-text').textContent = used + ' / ' + total;
+        const bar = document.getElementById('port-pool-bar');
+        bar.style.width = pct + '%';
+        bar.classList.remove('warn', 'danger');
+        if (pct > 90) bar.classList.add('danger');
+        else if (pct > 70) bar.classList.add('warn');
+        document.getElementById('port-pool-range').textContent = CONFIG.portPoolStart + ' – ' + CONFIG.portPoolEnd;
+
+        renderRelayIP();
+    }
+
+    function renderRelayIP() {
+        const displayPanel = document.getElementById('relay-ip-panel');
+        const setupPanel = document.getElementById('relay-ip-setup');
+        const editPanel = document.getElementById('relay-ip-edit');
+        const startBtn = document.getElementById('btn-start-relay');
+        const shutdownBtn = document.getElementById('btn-shutdown-relay');
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.querySelector('.status-chip .dot');
+        const editBtn = document.getElementById('btn-edit-ip');
+
+        if (!CONFIG.relayConfigured) {
+            // not configured yet — show setup form
+            if (displayPanel) displayPanel.style.display = 'none';
+            if (editPanel) editPanel.style.display = 'none';
+            if (setupPanel) setupPanel.style.display = 'block';
+            if (startBtn) startBtn.style.display = '';
+            if (shutdownBtn) shutdownBtn.style.display = 'none';
+            if (editBtn) editBtn.style.display = 'none';
+            if (statusText) statusText.textContent = '未配置 — 请先设置服务器地址';
+            if (statusDot) { statusDot.classList.add('warn'); statusDot.classList.remove('off'); }
+            return;
+        }
+
+        if (!relayRunning) {
+            // configured but stopped — show display + edit button
+            if (setupPanel) setupPanel.style.display = 'none';
+            if (editPanel) editPanel.style.display = 'none';
+            if (displayPanel) displayPanel.style.display = 'block';
+            if (startBtn) startBtn.style.display = '';
+            if (shutdownBtn) shutdownBtn.style.display = 'none';
+            if (editBtn) editBtn.style.display = '';
+            document.getElementById('relay-ipv6-display').textContent = CONFIG.relayIpv6 || '未配置';
+            document.getElementById('relay-ipv4-display').textContent = CONFIG.relayIpv4 || '未配置';
+            if (statusText) statusText.textContent = '服务器已停止';
+            if (statusDot) { statusDot.classList.remove('warn'); statusDot.classList.add('off'); }
+            return;
+        }
+
+        // configured and running — show stop button, hide edit button
+        if (setupPanel) setupPanel.style.display = 'none';
+        if (editPanel) editPanel.style.display = 'none';
+        if (displayPanel) displayPanel.style.display = 'block';
+        if (startBtn) startBtn.style.display = 'none';
+        if (shutdownBtn) shutdownBtn.style.display = '';
+        if (editBtn) editBtn.style.display = 'none';
+        document.getElementById('relay-ipv6-display').textContent = CONFIG.relayIpv6 || '未配置';
+        document.getElementById('relay-ipv4-display').textContent = CONFIG.relayIpv4 || '未配置';
+        if (statusText) {
+            if (CONFIG.role === 'host') {
+                statusText.textContent = '已连接中继 ' + (CONFIG.publicIp || '');
+            } else {
+                statusText.textContent = '中继服务运行中';
+            }
+        }
+        if (statusDot) { statusDot.classList.remove('warn', 'off'); }
+    }
+
+    function renderRelayConnections() {
+        const container = document.getElementById('control-conns');
+        const activeRooms = [];
+        rooms.forEach(r => { if (r.status !== 'closed') activeRooms.push(r); });
+
+        if (activeRooms.length === 0) {
+            container.innerHTML = `<div class="empty" style="padding:30px 20px;"><span style="font-size:12.5px;">暂无控制连接，等待房主端接入</span></div>`;
+            return;
+        }
+        container.innerHTML = activeRooms.map(r => `
+            <div class="conn-item" style="cursor:pointer;" onclick="showRoomDetail(${r.roomId})" title="点击查看房间详情">
+                <div class="conn-info">
+                    <span class="pill host-pill">房主</span>
+                    <span class="name">${escHtml(r.roomName)}</span>
+                    <span class="addr">${r.hostAddress ? '来自 ' + escHtml(r.hostAddress) + ' · ' : ''}MC端口 ${r.localMcPort} · 分配端口 ${r.assignedPort} · ${r.playerCount} 玩家</span>
+                </div>
+                <span class="pill ${r.status === 'active' ? 'on' : 'waiting'}">${r.status === 'active' ? '活跃' : '等待'}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderRelayTunnels() {
+        const container = document.getElementById('data-tunnels');
+        const allTunnels = [];
+        rooms.forEach(r => {
+            if (r.status !== 'closed') {
+                r.tunnels.forEach(t => allTunnels.push({ ...t, roomName: r.roomName, roomId: r.roomId }));
+            }
+        });
+        if (allTunnels.length === 0) {
+            container.innerHTML = `<div class="empty" style="padding:30px 20px;"><span style="font-size:12.5px;">暂无活跃隧道</span></div>`;
+            return;
+        }
+        container.innerHTML = allTunnels.map(t => `
+            <div class="tunnel-item">
+                <span style="font-family:var(--font-mono);font-size:11.5px;">${t.id}</span>
+                <span style="font-size:12px;color:var(--text-secondary);">房间: ${escHtml(t.roomName)} · 玩家 ${t.playerId}</span>
+                <span class="tunnel-dir">${t.direction}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">${formatBytes(t.bytesForwarded)}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderHostPanel() {
+        // 更新创建卡片标签
+        const label = document.getElementById('room-create-label');
+        if (label) {
+            label.textContent = HOST_STATE.connected
+                ? '在 ' + HOST_STATE.relayIp + ' 上创建房间'
+                : '创建房间';
+        }
+        // 房间视图头部的连接状态标记
+        const badge = document.getElementById('host-conn-badge');
+        const badgeText = document.getElementById('host-conn-badge-text');
+        const discBtn = document.getElementById('btn-host-disc');
+        const subtitle = document.getElementById('rooms-subtitle');
+        if (badge && badgeText && discBtn) {
+            if (HOST_STATE.connected) {
+                badge.style.display = 'flex';
+                badgeText.textContent = '已连接: ' + HOST_STATE.relayIp;
+                discBtn.style.display = '';
+                if (subtitle) subtitle.textContent = '远程中继 ' + HOST_STATE.relayIp + ' · 房间列表';
+            } else {
+                badge.style.display = 'none';
+                discBtn.style.display = 'none';
+                if (subtitle) subtitle.textContent = '所有联机房间 · 连接码 · 玩家列表';
+            }
+        }
+        // 若已连接，预填创建房间弹窗的远程 IP
+        if (HOST_STATE.connected && HOST_STATE.relayIp) {
+            const ipInput = document.getElementById('new-room-ip');
+            if (ipInput && !ipInput.value) ipInput.value = HOST_STATE.relayIp;
+        }
+    }
+
+    // 断开远程中继（供外部调用）
+    async function doHostDisconnect() {
+        await hostDisconnect();
+        renderHostPanel();
+        renderRoomGrid();
+    }
+
+    function renderRoomGrid() {
+        const grid = document.getElementById('room-grid');
+        const stats = getAggregatedStats();
+        let html = `
+            <div class="create-card" onclick="openCreateRoomModal()">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span>创建房间 (${stats.activeRooms} 个活跃)</span>
+            </div>
+        `;
+
+        rooms.forEach(r => {
+            const menuId = 'rm' + (menuCounter++);
+            const statusPill = r.status === 'active' ? '<span class="pill on">运行中</span>' :
+                               r.status === 'waiting' ? '<span class="pill waiting">等待玩家</span>' :
+                               '<span class="pill closed">已关闭</span>';
+            html += `
+                <div class="room-card" onclick="showRoomDetail(${r.roomId})">
+                    <div class="room-card-top">
+                        <div>
+                            <span class="room-name">${escHtml(r.roomName)}</span>
+                        </div>
+                        <div class="more-wrap">
+                            <button class="item-more" onclick="toggleMenu(event,'${menuId}')">
+                                <svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>
+                            </button>
+                            <div class="context-menu" id="${menuId}">
+                                <button onclick="event.stopPropagation();showRoomDetail(${r.roomId})">查看详情</button>
+                                <button onclick="event.stopPropagation();copyText('${r.connectionCode}')">复制连接码</button>
+                                <hr>
+                                ${r.status === 'closed' ? `<button onclick="event.stopPropagation();startRoomById(${r.roomId})">启动房间</button><hr>` : ''}
+                                <button class="danger" onclick="event.stopPropagation();closeRoomById(${r.roomId})">关闭房间</button>
+                                <button class="danger" onclick="event.stopPropagation();forceCloseRoomById(${r.roomId})">强制关闭</button>
+                                <hr>
+                                <button class="danger" onclick="event.stopPropagation();deleteRoomById(${r.roomId})">删除房间</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="room-meta">MC端口 ${r.localMcPort} · 分配端口 ${r.assignedPort}${r.hostAddress ? ' · 房主 ' + escHtml(r.hostAddress) : ''}</div>
+                    <div class="tag-row">
+                        ${statusPill}
+                        <span class="pill accent">${r.tunnels.length} 条隧道</span>
+                    </div>
+                    <div class="room-stats">
+                        <div class="stat-mini"><div class="v">${r.playerCount}</div><div class="l">玩家数</div></div>
+                        <div class="stat-mini"><div class="v">${r.tunnels.length}</div><div class="l">隧道数</div></div>
+                        <div class="stat-mini"><div class="v">${formatBytes(r.players.reduce((s,p) => s + p.bytesSent + p.bytesRecv, 0))}</div><div class="l">流量</div></div>
+                        <div class="stat-mini"><div class="v">${r.status === 'closed' ? '已关闭' : r.status === 'active' ? '活跃' : '等待'}</div><div class="l">状态</div></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        grid.innerHTML = html;
+    }
+
+    function renderRoomDetail(room) {
+        document.getElementById('detail-title').textContent = room.roomName;
+        document.getElementById('detail-sub').textContent = '连接码: ' + room.connectionCode;
+        document.getElementById('detail-addr').textContent = '分配端口 ' + room.assignedPort + ' · MC端口 ' + room.localMcPort + (room.hostAddress ? ' · 房主 ' + room.hostAddress : '') + ' · 创建于 ' + room.createdAt;
+
+        // tags
+        const tags = document.getElementById('detail-tags');
+        const statusPill = room.status === 'active' ? '<span class="pill on">运行中</span>' :
+                           room.status === 'waiting' ? '<span class="pill waiting">等待玩家</span>' :
+                           '<span class="pill closed">已关闭</span>';
+        tags.innerHTML = statusPill + ' <span class="pill accent">端口 ' + room.assignedPort + '</span>';
+
+        // buttons
+        document.getElementById('btn-copy-code').onclick = () => copyText(room.connectionCode);
+        document.getElementById('btn-close-room').onclick = () => {
+            closeRoomById(room.roomId);
+            showView('rooms');
+        };
+
+        // info tab
+        document.getElementById('rinfo-id').textContent = room.roomId;
+        document.getElementById('rinfo-name').textContent = room.roomName;
+        document.getElementById('rinfo-relayip').textContent = room.relayIp || HOST_STATE.relayIp || CONFIG.publicIp;
+        document.getElementById('rinfo-hostaddr').textContent = room.hostAddress || '（本地创建）';
+        document.getElementById('rinfo-code').textContent = room.connectionCode;
+        document.getElementById('rinfo-port').textContent = room.assignedPort;
+        document.getElementById('rinfo-mcport').textContent = room.localMcPort;
+        document.getElementById('rinfo-status').textContent = room.status === 'active' ? '活跃' : room.status === 'waiting' ? '等待中' : '已关闭';
+        document.getElementById('rinfo-players').textContent = room.playerCount;
+        document.getElementById('rinfo-time').textContent = room.createdAt;
+
+        // players tab
+        const ptb = document.getElementById('player-table-body');
+        if (room.players.length === 0) {
+            ptb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px;">暂无玩家连接</td></tr>';
+        } else {
+            ptb.innerHTML = room.players.map(p => `
+                <tr class="player-row">
+                    <td style="font-family:var(--font-mono);">#${p.id}</td>
+                    <td style="font-size:12px;">${p.connectedAt}</td>
+                    <td>${formatBytes(p.bytesSent)}</td>
+                    <td>${formatBytes(p.bytesRecv)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // tunnels tab
+        const rtl = document.getElementById('room-tunnel-list');
+        if (room.tunnels.length === 0) {
+            rtl.innerHTML = '<div class="empty" style="padding:30px 20px;"><span style="font-size:12.5px;">该房间暂无活跃隧道</span></div>';
+        } else {
+            rtl.innerHTML = room.tunnels.map(t => `
+                <div class="tunnel-item">
+                    <span style="font-family:var(--font-mono);font-size:11.5px;">${t.id}</span>
+                    <span style="font-size:12px;color:var(--text-secondary);">玩家 ${t.playerId}</span>
+                    <span class="tunnel-dir">${t.direction}</span>
+                    <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);">${formatBytes(t.bytesForwarded)}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    function renderLog() {
+        const container = document.getElementById('log-container');
+        if (eventLog.length === 0) {
+            container.innerHTML = `<div class="empty" style="padding:30px 20px;"><span style="font-size:12.5px;">暂无事件，请创建房间或等待玩家连接</span></div>`;
+            return;
+        }
+        container.innerHTML = eventLog.slice(0, 15).map(e =>
+            `<div class="log-line"><span class="log-time">${e.time}</span> ${escHtml(e.msg)}</div>`
+        ).join('');
+    }
+
+    async function refreshStats() {
+        await syncAll();
+        renderAll();
+        showToast('已刷新');
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // ======================== Modal ========================
+    function openCreateRoomModal() {
+        document.getElementById('modal-create-room').classList.add('show');
+        // 预填：若已连接远程中继用 relay IP，否则留空让用户手动填
+        const ipInput = document.getElementById('new-room-ip');
+        if (ipInput && !ipInput.value.trim()) {
+            if (HOST_STATE.connected && HOST_STATE.relayIp) {
+                ipInput.value = HOST_STATE.relayIp;
+            }
+            // 未连接则不预填，用户必须手动输入远程中继 IP
+        }
+    }
+
+    function closeModal(kind) {
+        document.getElementById('modal-' + kind).classList.remove('show');
+    }
+
+    function createRoom() { createRoomFromModal(); }
+
+    // ======================== Event Bindings ========================
+    document.querySelectorAll('.rail-item').forEach(btn => {
+        btn.addEventListener('click', () => showView(btn.dataset.view));
+    });
+
+    document.getElementById('detail-back').addEventListener('click', () => {
+        document.getElementById('view-room-detail').classList.remove('active');
+        showView('rooms');
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const parent = tab.parentElement.parentElement;
+            parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            parent.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+            const panel = document.getElementById('tab-' + tab.dataset.tab);
+            if (panel) panel.style.display = 'block';
+        });
+    });
+
+    document.addEventListener('click', closeAllMenus);
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+        ov.addEventListener('click', (e) => {
+            if (e.target === ov) ov.classList.remove('show');
+        });
+    });
+
+    document.querySelectorAll('.switch').forEach(sw => {
+        sw.addEventListener('click', () => sw.classList.toggle('on'));
+    });
+
+    // titlebar drag → WebView2 native window move
+    var titlebar = document.querySelector('.titlebar');
+    if (titlebar) {
+        titlebar.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.titlebar-btn') || e.target.closest('.status-chip') ||
+                e.target.closest('button')) return;
+            try {
+                if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+                    window.chrome.webview.postMessage('drag');
+                }
+            } catch(ex) {}
+        });
+    }
+
+    // ======================== Config Display ========================
+    function updateConfigDisplay() {
+        var roleBadge = document.getElementById('role-badge');
+        if (roleBadge) {
+            roleBadge.textContent = CONFIG.role === 'host' ? '· 房主端' : CONFIG.role === 'relay' ? '· 中继端 + 房主端' : '';
+        }
+        document.getElementById('cfg-ipv6').textContent = CONFIG.relayIpv6 || '未配置';
+        document.getElementById('cfg-ipv4').textContent = CONFIG.relayIpv4 || '未配置';
+        document.getElementById('cfg-cport').textContent = CONFIG.controlPort;
+        document.getElementById('cfg-hport').textContent = CONFIG.httpPort;
+        document.getElementById('cfg-ver').textContent = CONFIG.version;
+        document.getElementById('cfg-pver').textContent = CONFIG.protocolVersion;
+        document.getElementById('cfg-prange').textContent = CONFIG.portPoolStart + ' – ' + CONFIG.portPoolEnd;
+        document.getElementById('cfg-maxp').textContent = CONFIG.maxPlayersPerRoom;
+        document.getElementById('cfg-tlsver').textContent = CONFIG.tlsVersion;
+        document.getElementById('cfg-hb').textContent = (CONFIG.heartbeatIntervalMs / 1000) + ' 秒（用于维持 NAT 映射 + 存活检测）';
+        document.getElementById('cfg-grace').textContent = (CONFIG.roomGracePeriodMs / 1000) + ' 秒（断线后端口保留时长）';
+    }
+    updateConfigDisplay();
+
+    // ======================== Real-time Uptime (1s) ========================
+    let localStartTime = 0;    // Date.now() when relay was started (client clock)
+    let frozenUptime = 0;      // frozen uptime seconds when relay is stopped
+    setInterval(() => {
+        let uptime = frozenUptime;
+        if (relayRunning && localStartTime > 0) {
+            uptime = Math.max(0, frozenUptime + Math.floor((Date.now() - localStartTime) / 1000));
+        }
+        const text = formatUptime(uptime);
+        const sUptime = document.getElementById('s-uptime');
+        const kpiUptime = document.getElementById('kpi-uptime');
+        if (sUptime) sUptime.textContent = text;
+        if (kpiUptime) kpiUptime.textContent = text;
+    }, 1000);
+
+    // ======================== Backend Log Polling (2s) ========================
+    var backendLogSeen = 0;
+    setInterval(async () => {
+        try {
+            var r = await fetch(API_BASE + '/logs');
+            var d = await r.json();
+            if (d && d.logs) {
+                var added = false;
+                for (var i = backendLogSeen; i < d.logs.length; i++) {
+                    var entry = d.logs[i];
+                    // 去重: 不在已有 eventLog 中重复
+                    eventLog.unshift({ time: entry.time, msg: '[后端] ' + entry.msg });
+                    added = true;
+                }
+                backendLogSeen = d.logs.length;
+                if (added) {
+                    eventLog = eventLog.slice(0, 50);
+                    var container = document.getElementById('log-container');
+                    if (container) {
+                        container.innerHTML = eventLog.slice(0, 15).map(function(e) {
+                            return '<div class="log-line"><span class="log-time">' + e.time + '</span> ' + escHtml(e.msg) + '</div>';
+                        }).join('');
+                    }
+                }
+            }
+        } catch(e) {}
+    }, 2000);
+
+    // ======================== Backend Polling (5s) ========================
+    setInterval(async () => {
+        if (!relayRunning && CONFIG.role !== 'host') return;
+        if (CONFIG.role === 'host') {
+            await fetchConfig();
+            await fetchHostStatus().catch(() => {});
+            renderAll();
+            return;
+        }
+        await syncAll();
+        // 同时拉 Host 房间（确保实时）
+        if (HOST_STATE.connected) {
+            await fetchRooms().catch(() => {});
+        }
+
+        // Re-render host panel if in rooms view
+        const roomsView = document.getElementById('view-rooms');
+        if (roomsView && roomsView.classList.contains('active')) {
+            renderHostPanel();
+        }
+
+        // re-render room detail if visible
+        const detailView = document.getElementById('view-room-detail');
+        if (detailView.classList.contains('active')) {
+            const detailId = document.getElementById('rinfo-id');
+            if (detailId) {
+                const roomId = parseInt(detailId.textContent);
+                if (roomId) {
+                    await fetchRoomPlayers(roomId);
+                    const room = rooms.get(roomId);
+                    if (room) renderRoomDetail(room);
+                }
+            }
+        }
+        renderAll();
+    }, 5000);
+
+    // ======================== 网络检测卡片（C++ 推送）========================
+    var checkSteps = [];
+    var checkFixGuide = {
+        '网络检测': '请确保已连接宽带 WiFi 或有线网络，手机热点不支持',
+        '防火墙': '请以管理员身份运行本软件，或手动放行端口 40000-41000',
+        '路由器穿透': '进入路由器管理页(192.168.1.1)→IPv6防火墙→关闭入站过滤',
+        'UPnP 映射': '进入路由器管理页→端口转发→外部40000映射到本机40000',
+        '连通性自检': '检查路由器防火墙是否已放行端口'
+    };
+    window.onCheckStep = function(s) {
+        if (s.step === '整体检测') return;
+        var old = checkSteps.find(function(x) { return x.step === s.step; });
+        if (!old) {
+            // 动态步骤名（IPv4 UPnP 映射 / IPv6 路由器穿透），替换第3项
+            if (checkSteps.length > 2) checkSteps[2] = { step: s.step, ok: s.ok, detail: s.detail };
+            else checkSteps.push({ step: s.step, ok: s.ok, detail: s.detail });
+        } else { old.ok = s.ok; old.detail = s.detail; }
+        // 渲染弹窗
+        var list = document.getElementById('net-check-list');
+        if (!list) return;
+        list.innerHTML = checkSteps.map(function(s) {
+            var isPending = s.detail.indexOf('检测中') === 0 || s.detail.indexOf('等待') === 0;
+            var icon = s.ok ? '<span style="color:#10b981;font-weight:bold;">✓</span>' :
+                       isPending ?
+                       '<span class="spinner" style="width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;display:inline-block;animation:spin .6s linear infinite;"></span>' :
+                       '<span style="color:#ef4444;font-weight:bold;">✗</span>';
+            var guide = (!s.ok && !isPending) ?
+                '<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">💡 ' + (checkFixGuide[s.step] || '') + '</div>' : '';
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
+                + '<div style="width:18px;text-align:center;">' + icon + '</div>'
+                + '<div style="flex:1;"><div style="display:flex;align-items:center;justify-content:space-between;">'
+                + '<span style="font-size:14px;font-weight:500;">' + s.step + '</span>'
+                + '<span style="font-size:12px;color:var(--text-secondary);">' + s.detail + '</span>'
+                + '</div>' + guide + '</div></div>';
+        }).join('');
+    };
+    window.onNetworkStatus = function(ns) {
+        var dot = document.getElementById('net-dot');
+        var txt = document.getElementById('net-status');
+        if (dot) dot.className = 'dot ' + (ns.statusLevel === 'ok' ? 'on' : 'off');
+        if (txt) txt.textContent = ns.statusText || '';
+        // 弹窗最终按钮
+        var footer = document.getElementById('net-check-footer');
+        if (footer) {
+            footer.innerHTML = '<button class="btn btn-ghost" onclick="closeModal(\'net-check\')">取消</button>'
+                + '<button class="btn btn-primary" onclick="closeModal(\'net-check\');startRelay();">✅ 启动中继服务器</button>';
+        }
+    };
+    function startRelayCheck() {
+        // 预填全部检查项（等待中）
+        checkSteps = [
+            { step: '网络检测', ok: false, detail: '检测中...' },
+            { step: '防火墙', ok: false, detail: '检测中...' },
+            { step: '路由器穿透', ok: false, detail: '检测中...' },
+            { step: '连通性自检', ok: false, detail: '检测中...' }
+        ];
+        document.getElementById('net-check-list').innerHTML = checkSteps.map(function(s) {
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">'
+                + '<div style="width:18px;text-align:center;"><span style="color:var(--text-tertiary);">○</span></div>'
+                + '<div style="flex:1;display:flex;align-items:center;justify-content:space-between;">'
+                + '<span style="font-size:14px;font-weight:500;">' + s.step + '</span>'
+                + '<span style="font-size:12px;color:var(--text-secondary);">检测中...</span>'
+                + '</div></div>';
+        }).join('');
+        document.getElementById('net-check-footer').innerHTML = '<button class="btn btn-ghost" onclick="closeModal(\'net-check\')">取消</button>';
+        document.getElementById('modal-net-check').classList.add('show');
+        try { window.chrome.webview.postMessage('start_net_check'); } catch(e) {}
+    }
+
+    // ======================== Initial ========================
+    (async () => {
+        const ping = await apiGet('/ping');
+        if (ping && ping.status === 'ok') {
+            CONFIG.role = ping.role || 'relay';
+            addLog('后端服务已就绪 (' + CONFIG.role + ' 模式)');
+        }
+        await syncAll();
+        // 从 /config 恢复已配置的 IP（如果有）
+        if (CONFIG.publicIp && CONFIG.publicIp !== '127.0.0.1') {
+            CONFIG.relayConfigured = true;
+            // 自动填入检测到的 IP 到对应的 IPv6/IPv4 字段
+            if (CONFIG.publicIp.includes(':')) {
+                CONFIG.relayIpv6 = CONFIG.publicIp;
+            } else {
+                CONFIG.relayIpv4 = CONFIG.publicIp;
+            }
+            addLog('已检测到公网 IP: ' + CONFIG.publicIp);
+        }
+        // 服务器默认关闭
+        relayRunning = false;
+        frozenUptime = 0;
+        renderAll();
+    })();
+</script>
+
+</body>
+</html>
