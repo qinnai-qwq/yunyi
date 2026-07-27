@@ -1,0 +1,6 @@
+# 你的 .h 是 C++ 头文件
+*.h linguist-language=C++
+
+# 第三方依赖不计入语言统计
+third_party/** linguist-vendored
+webview2-sdk/** linguist-vendored
