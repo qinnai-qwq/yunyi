@@ -1,0 +1,7 @@
+========== yunyi HTTP log 2026-07-21 23:36:19 ==========
+23:36:21 | GET /api/v1/config | 200
+23:36:21 | GET /api/v1/rooms | 200
+23:36:21 | GET /api/v1/stats | 200
+23:36:21 | GET /api/v1/logs | 200
+23:36:22 | POST /api/v1/rooms | 201 | body:{"roomName":"test","localMcPort":25565}
+23:36:22 | GET /api/v1/rooms | 200

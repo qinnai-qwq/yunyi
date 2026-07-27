@@ -1,0 +1,21 @@
+
+  +====================================+
+  |       云驿 Yun Yi  v0.3.0          |
+  |   Minecraft 中继服务 / 无需公网 IP |
+  +====================================+
+
+Starting as Host Agent...
+[HostAgent] State: 0 -> 1
+[HostAgent] Connected to relay, ready to create room
+[HostAgent] State: 1 -> 3
+[HostAgent] State: 3 -> 2
+[HostAgent] Auto-registered room
+[HostAgent] Room registered!
+[HostAgent] Assigned port: 40001
+[HostAgent] Room ID: 1
+[HostAgent] Connection code: 127.0.0.1:40001
+[HostAgent] Share this with your friends!
+[HostAgent] State: 2 -> 3
+[ControlChannel] Heartbeat started (25000ms)
+[HostAgent] Player connecting (ID: 1), opening tunnel...
+[HostAgent] Tunnel opened for player 1, STREAM_BIND sent

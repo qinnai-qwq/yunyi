@@ -1,0 +1,4 @@
+========== yunyi HTTP log 2026-07-21 23:10:10 ==========
+23:10:13 | GET /api/v1/config | 200
+23:10:14 | POST /api/v1/config | 200 | body:{"publicIp":"2408:826c:1359:5d8:d17a:790d:65fd:b9fd"}
+23:10:14 | GET /api/v1/config | 200

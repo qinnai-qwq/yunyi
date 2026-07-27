@@ -1,0 +1,16 @@
+========== yunyi HTTP log 2026-07-18 19:36:24 ==========
+19:36:26 | GET / | 200
+19:36:26 | GET /api/v1/ping | 200
+19:36:26 | GET /api/v1/stats | 200
+19:36:26 | GET /api/v1/rooms | 200
+19:36:26 | GET /api/v1/config | 200
+19:36:26 | GET /favicon.ico | 404
+19:36:27 | GET /api/v1/stats | 200
+19:36:27 | GET /api/v1/rooms | 200
+19:36:27 | GET /api/v1/config | 200
+19:36:29 | GET /api/v1/stats | 200
+19:36:29 | GET /api/v1/rooms | 200
+19:36:29 | GET /api/v1/config | 200
+19:36:31 | GET /api/v1/stats | 200
+19:36:31 | GET /api/v1/rooms | 200
+19:36:31 | GET /api/v1/config | 200

@@ -1,0 +1,3 @@
+========== yunyi HTTP log 2026-07-20 00:04:58 ==========
+00:05:01 | POST /api/v1/rooms | 201 | body:{"roomName":"solo","localMcPort":25566}
+00:05:06 | GET /api/v1/ping | 200
