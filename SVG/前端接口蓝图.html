@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light only">
+<title>云驿 前端接口蓝图</title>
+<style>
+  html, body { background:#1a1a2e; margin:0; padding:16px; color-scheme:light only; }
+  svg { width:100%; height:auto; display:block; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1600 1350" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <marker id="aGet"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#6faa6f"/></marker>
+    <marker id="aPost" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#e8b23d"/></marker>
+    <marker id="aDel"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#e05555"/></marker>
+    <marker id="aPoll" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#5a8ec0"/></marker>
+    <marker id="aEvt"  markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#cc88cc"/></marker>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.4"/></filter>
+  </defs>
+
+  <!-- ===== 标题 ===== -->
+  <text x="800" y="28" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">云驿 前端接口蓝图</text>
+  <text x="800" y="48" font-size="12" fill="#888888" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">WebUI (yunyi.html) ↔ 后端 REST API 调用全景 (双角色: relay/host)　|　GET=绿　POST=橙　DELETE=红　轮询=蓝</text>
+
+  <!-- ============================================================ -->
+  <!--  LAYER 0: 前端 UI 视图层                                       -->
+  <!-- ============================================================ -->
+
+  <!-- WebUI 主窗口 -->
+  <rect x="50" y="70" width="300" height="110" rx="10" fill="#2d2d44" stroke="#6f6faa" stroke-width="2" filter="url(#sh)"/>
+  <text x="200" y="96" font-size="16" font-weight="bold" fill="#bbbbff" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">云驿 WebUI</text>
+  <text x="200" y="115" font-size="11" fill="#888899" text-anchor="middle" font-family="Consolas,monospace">yunyi.html · 单文件 SPA</text>
+  <text x="200" y="135" font-size="10" fill="#666677" text-anchor="middle" font-family="Consolas,monospace">标题栏 · 侧栏导航 · 4 视图 + 弹窗</text>
+  <text x="200" y="155" font-size="10" fill="#666677" text-anchor="middle" font-family="Consolas,monospace">每 5s 轮询 stats + rooms</text>
+
+  <!-- 四个视图 -->
+  <rect x="50" y="210" width="135" height="50" rx="6" fill="#2a2a3a" stroke="#6f6faa" stroke-width="1.2" filter="url(#sh)"/>
+  <text x="117" y="230" font-size="11" fill="#aaaacc" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">主页</text>
+  <text x="117" y="248" font-size="9" fill="#777788" text-anchor="middle" font-family="Consolas,monospace">仪表盘 + 日志</text>
+
+  <rect x="215" y="210" width="135" height="50" rx="6" fill="#2a2a3a" stroke="#6f6faa" stroke-width="1.2" filter="url(#sh)"/>
+  <text x="282" y="230" font-size="11" fill="#aaaacc" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">中继服务器</text>
+  <text x="282" y="248" font-size="9" fill="#777788" text-anchor="middle" font-family="Consolas,monospace">KPI + 端口池</text>
+
+  <rect x="50" y="275" width="135" height="50" rx="6" fill="#2a2a3a" stroke="#6f6faa" stroke-width="1.2" filter="url(#sh)"/>
+  <text x="117" y="295" font-size="11" fill="#aaaacc" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">房间管理</text>
+  <text x="117" y="313" font-size="9" fill="#777788" text-anchor="middle" font-family="Consolas,monospace">CRUD + 详情</text>
+
+  <rect x="215" y="275" width="135" height="50" rx="6" fill="#2a2a3a" stroke="#6f6faa" stroke-width="1.2" filter="url(#sh)"/>
+  <text x="282" y="295" font-size="11" fill="#aaaacc" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">设置</text>
+  <text x="282" y="313" font-size="9" fill="#777788" text-anchor="middle" font-family="Consolas,monospace">只读配置</text>
+
+  <!-- 弹窗 -->
+  <rect x="132" y="340" width="136" height="30" rx="4" fill="#3a2a1a" stroke="#e8b23d" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="200" y="359" font-size="10" fill="#ccaa77" text-anchor="middle" font-family="Consolas,monospace">创建房间弹窗</text>
+
+  <!-- ============================================================ -->
+  <!--  LAYER 1: API 调用层                                          -->
+  <!-- ============================================================ -->
+
+  <!-- API Base -->
+  <rect x="480" y="70" width="320" height="30" rx="5" fill="#1a2a1a" stroke="#447744" stroke-width="1"/>
+  <text x="640" y="90" font-size="12" fill="#88cc88" text-anchor="middle" font-family="Consolas,monospace">API_BASE = http://127.0.0.1:8080/api/v1</text>
+
+  <!-- GET /stats -->
+  <rect x="480" y="120" width="320" height="42" rx="6" fill="#1a2a1a" stroke="#6faa6f" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="139" font-size="12" font-weight="bold" fill="#6faa6f" font-family="Consolas,monospace">GET</text>
+  <text x="540" y="139" font-size="12" fill="#aaddaa" font-family="Consolas,monospace">/api/v1/stats</text>
+  <text x="500" y="155" font-size="9" fill="#558855" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ EngineStats { uptime, rooms, tunnels, bytesRelayed … }</text>
+
+  <!-- GET /rooms -->
+  <rect x="480" y="175" width="320" height="42" rx="6" fill="#1a2a1a" stroke="#6faa6f" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="194" font-size="12" font-weight="bold" fill="#6faa6f" font-family="Consolas,monospace">GET</text>
+  <text x="540" y="194" font-size="12" fill="#aaddaa" font-family="Consolas,monospace">/api/v1/rooms</text>
+  <text x="500" y="210" font-size="9" fill="#558855" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ { rooms: [ RoomInfo … ], total }</text>
+
+  <!-- GET /rooms/:id -->
+  <rect x="480" y="230" width="320" height="42" rx="6" fill="#1a2a1a" stroke="#6faa6f" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="249" font-size="12" font-weight="bold" fill="#6faa6f" font-family="Consolas,monospace">GET</text>
+  <text x="540" y="249" font-size="12" fill="#aaddaa" font-family="Consolas,monospace">/api/v1/rooms/{roomId}</text>
+  <text x="500" y="265" font-size="9" fill="#558855" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ 单个房间详情（含玩家列表）</text>
+
+  <!-- GET /rooms/:id/players -->
+  <rect x="480" y="285" width="320" height="42" rx="6" fill="#1a2a1a" stroke="#6faa6f" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="304" font-size="12" font-weight="bold" fill="#6faa6f" font-family="Consolas,monospace">GET</text>
+  <text x="540" y="304" font-size="12" fill="#aaddaa" font-family="Consolas,monospace">/api/v1/rooms/{roomId}/players</text>
+  <text x="500" y="320" font-size="9" fill="#558855" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ [ PlayerInfo { id, bytesSent, bytesRecv … } ]</text>
+
+  <!-- GET /config -->
+  <rect x="480" y="340" width="320" height="42" rx="6" fill="#1a2a1a" stroke="#6faa6f" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="359" font-size="12" font-weight="bold" fill="#6faa6f" font-family="Consolas,monospace">GET</text>
+  <text x="540" y="359" font-size="12" fill="#aaddaa" font-family="Consolas,monospace">/api/v1/config</text>
+  <text x="500" y="375" font-size="9" fill="#558855" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ { role, publicIp, hostAddress, portPool, heartbeatMs … }</text>
+
+  <!-- POST /rooms -->
+  <rect x="480" y="400" width="320" height="42" rx="6" fill="#3a2a1a" stroke="#e8b23d" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="419" font-size="12" font-weight="bold" fill="#e8b23d" font-family="Consolas,monospace">POST</text>
+  <text x="545" y="419" font-size="12" fill="#ddcc88" font-family="Consolas,monospace">/api/v1/rooms</text>
+  <text x="500" y="435" font-size="9" fill="#998844" font-family="PingFang SC,Microsoft YaHei,sans-serif">{ roomName, localMcPort } → RoomResult { connectionCode … }</text>
+
+  <!-- DELETE /rooms/:id -->
+  <rect x="480" y="455" width="320" height="42" rx="6" fill="#3a1a1a" stroke="#e05555" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="500" y="474" font-size="12" font-weight="bold" fill="#e05555" font-family="Consolas,monospace">DELETE</text>
+  <text x="555" y="474" font-size="12" fill="#dd8888" font-family="Consolas,monospace">/api/v1/rooms/{roomId}</text>
+  <text x="500" y="490" font-size="9" fill="#994444" font-family="PingFang SC,Microsoft YaHei,sans-serif">→ { roomId, status: "closed" }  关闭房间 · 回收端口</text>
+
+  <!-- ===== UI → API 调用线 ===== -->
+
+  <!-- 主页/中继 → GET /stats (绿线) -->
+  <line x1="350" y1="125" x2="478" y2="141" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+  <line x1="350" y1="235" x2="478" y2="141" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+
+  <!-- 主页/中继 → GET /rooms -->
+  <line x1="350" y1="125" x2="478" y2="196" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+
+  <!-- 房间管理 → GET /rooms (查询) -->
+  <line x1="185" y1="275" x2="478" y2="196" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+
+  <!-- 房间详情 → GET /rooms/:id + GET /players -->
+  <line x1="282" y1="300" x2="478" y2="251" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+  <line x1="282" y1="300" x2="478" y2="306" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+
+  <!-- 设置 → GET /config -->
+  <line x1="282" y1="300" x2="478" y2="361" stroke="#6faa6f" stroke-width="1.5" marker-end="url(#aGet)"/>
+
+  <!-- 创建房间弹窗 → POST /rooms -->
+  <line x1="200" y1="355" x2="478" y2="421" stroke="#e8b23d" stroke-width="1.5" marker-end="url(#aPost)"/>
+
+  <!-- 关闭/删除 → DELETE /rooms/:id -->
+  <line x1="200" y1="300" x2="478" y2="476" stroke="#e05555" stroke-width="1.5" marker-end="url(#aDel)"/>
+
+  <!-- 轮询标注 -->
+  <rect x="480" y="515" width="320" height="22" rx="4" fill="#1a2a3a" stroke="#5a8ec0" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="640" y="531" font-size="10" fill="#77aacc" text-anchor="middle" font-family="Consolas,monospace">⏱ 每 5s 轮询: GET /stats + GET /rooms</text>
+
+  <!-- ============================================================ -->
+  <!--  LAYER 2: 数据流向 → 渲染                                      -->
+  <!-- ============================================================ -->
+
+  <rect x="50" y="420" width="300" height="70" rx="10" fill="#2d2d44" stroke="#aaaacc" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="200" y="445" font-size="14" font-weight="bold" fill="#ccccdd" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">数据层 (内存)</text>
+  <text x="200" y="465" font-size="10" fill="#888899" text-anchor="middle" font-family="Consolas,monospace">engineStats  ·  rooms (Map)  ·  eventLog[]</text>
+  <text x="200" y="481" font-size="10" fill="#888899" text-anchor="middle" font-family="Consolas,monospace">CONFIG  ·  relayRunning  ·  menuCounter</text>
+
+  <!-- API → 数据层 -->
+  <line x1="480" y1="420" x2="352" y2="455" stroke="#aaaacc" stroke-width="1.5" marker-end="url(#aEvt)"/>
+
+  <!-- 数据层 → 渲染 -->
+  <rect x="50" y="520" width="300" height="55" rx="10" fill="#2d2d44" stroke="#aaaacc" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="200" y="542" font-size="14" font-weight="bold" fill="#ccccdd" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">渲染引擎 renderAll()</text>
+  <text x="200" y="562" font-size="10" fill="#888899" text-anchor="middle" font-family="Consolas,monospace">renderHomeStats · renderRelayKPI · renderRoomGrid …</text>
+
+  <line x1="200" y1="490" x2="200" y2="518" stroke="#cc88cc" stroke-width="1.5" marker-end="url(#aEvt)"/>
+
+  <!-- ============================================================ -->
+  <!--  LAYER 3: 后端服务                                            -->
+  <!-- ============================================================ -->
+
+  <rect x="880" y="70" width="360" height="240" rx="12" fill="#2a2010" stroke="#e8b23d" stroke-width="2" filter="url(#sh)"/>
+  <text x="1060" y="98" font-size="16" font-weight="bold" fill="#e8b23d" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">后端: HttpApiRouter</text>
+  <line x1="895" y1="107" x2="1225" y2="107" stroke="#443322" stroke-width="0.5"/>
+
+  <text x="900" y="130" font-size="11" fill="#ddcc88" font-family="PingFang SC,Microsoft YaHei,sans-serif">cpp-httplib HTTP 服务器</text>
+  <text x="900" y="150" font-size="10" fill="#998844" font-family="Consolas,monospace">svr-&gt;Get("/api/v1/rooms", …)</text>
+  <text x="900" y="168" font-size="10" fill="#998844" font-family="Consolas,monospace">svr-&gt;Post("/api/v1/rooms", …)</text>
+  <text x="900" y="186" font-size="10" fill="#998844" font-family="Consolas,monospace">svr-&gt;Delete("/api/v1/rooms/:id", …)</text>
+  <text x="900" y="204" font-size="10" fill="#998844" font-family="Consolas,monospace">svr-&gt;Get("/api/v1/stats", …)</text>
+  <text x="900" y="222" font-size="10" fill="#998844" font-family="Consolas,monospace">svr-&gt;Get("/api/v1/config", …)</text>
+
+  <text x="900" y="250" font-size="11" fill="#ddcc88" font-family="PingFang SC,Microsoft YaHei,sans-serif">nlohmann::json 序列化/反序列化</text>
+  <text x="900" y="270" font-size="11" fill="#ddcc88" font-family="PingFang SC,Microsoft YaHei,sans-serif">↓ 调用 Director 引擎接口</text>
+
+  <!-- API → 后端线 -->
+  <line x1="800" y1="200" x2="878" y2="200" stroke="#e8b23d" stroke-width="2" marker-end="url(#aPost)"/>
+
+  <!-- Director -->
+  <rect x="880" y="340" width="360" height="200" rx="10" fill="#2a2010" stroke="#e8b23d" stroke-width="3" filter="url(#sh)"/>
+  <text x="1060" y="368" font-size="16" font-weight="bold" fill="#e8b23d" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">Director · 引擎唯一门面</text>
+  <line x1="895" y1="377" x2="1225" y2="377" stroke="#443322" stroke-width="0.5"/>
+
+  <text x="900" y="400" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ instance() · init() · shutdown()</text>
+  <text x="900" y="420" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ startRelayService() · connectToRelay()</text>
+  <text x="900" y="440" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ createRoom() · closeRoom() · forceCloseRoom()</text>
+  <text x="900" y="460" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ listRooms() · getRoomInfo() · getRoomPlayers()</text>
+  <text x="900" y="480" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ getStats() · getLastError()</text>
+  <text x="900" y="498" font-size="11" fill="#ddcc88" font-family="Consolas,monospace">▲ touchRoomHeartbeat() · findRoomByControlSession()</text>
+  <text x="900" y="518" font-size="10" fill="#998844" font-family="PingFang SC,Microsoft YaHei,sans-serif">↓ 内部调度: Session · Scheduler · TunnelManager</text>
+  <text x="900" y="536" font-size="10" fill="#998844" font-family="PingFang SC,Microsoft YaHei,sans-serif">   TransportCore(IOCP+Keepalive) · TlsPskContext(OpenSSL)</text>
+
+  <line x1="1060" y1="310" x2="1060" y2="338" stroke="#e8b23d" stroke-width="2" marker-end="url(#aPost)"/>
+
+  <!-- ============================================================ -->
+  <!--  右侧: 调用逻辑速查                                           -->
+  <!-- ============================================================ -->
+
+  <rect x="1280" y="70" width="290" height="880" rx="6" fill="#1a1a2e" stroke="#444466" stroke-width="1"/>
+  <text x="1425" y="95" font-size="14" font-weight="bold" fill="#8888aa" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">前端 JS 调用逻辑</text>
+
+  <text x="1295" y="125" font-size="11" font-weight="bold" fill="#e8b23d" font-family="PingFang SC,Microsoft YaHei,sans-serif">初始化流程</text>
+  <text x="1295" y="145" font-size="9" fill="#888888" font-family="Consolas,monospace">1. DOMContentLoaded</text>
+  <text x="1295" y="163" font-size="9" fill="#888888" font-family="Consolas,monospace">2. syncAll() = fetchStats + fetchRooms + fetchConfig</text>
+  <text x="1295" y="181" font-size="9" fill="#888888" font-family="Consolas,monospace">3. renderAll() → 所有视图初始渲染</text>
+  <text x="1295" y="199" font-size="9" fill="#888888" font-family="Consolas,monospace">4. setInterval(1000ms) → 更新运行时长</text>
+  <text x="1295" y="217" font-size="9" fill="#888888" font-family="Consolas,monospace">5. setInterval(5000ms) → syncAll + 重渲染</text>
+
+  <text x="1295" y="255" font-size="11" font-weight="bold" fill="#e8b23d" font-family="PingFang SC,Microsoft YaHei,sans-serif">创建房间</text>
+  <text x="1295" y="275" font-size="9" fill="#888888" font-family="Consolas,monospace">openCreateRoomModal()</text>
+  <text x="1295" y="293" font-size="9" fill="#888888" font-family="Consolas,monospace">→ 填写房间名 + MC端口 + 中继IP</text>
+  <text x="1295" y="311" font-size="9" fill="#888888" font-family="Consolas,monospace">→ relay: POST 本地 /api/v1/rooms</text>
+  <text x="1295" y="329" font-size="9" fill="#888888" font-family="Consolas,monospace">→ host: POST 本地 → REGISTER → ACK</text>
+  <text x="1295" y="347" font-size="9" fill="#888888" font-family="Consolas,monospace">→ 返回 RoomResult { connectionCode }</text>
+  <text x="1295" y="365" font-size="9" fill="#888888" font-family="Consolas,monospace">→ rooms.set() + renderAll() + toast</text>
+
+  <text x="1295" y="385" font-size="11" font-weight="bold" fill="#6faa6f" font-family="PingFang SC,Microsoft YaHei,sans-serif">查看房间详情</text>
+  <text x="1295" y="405" font-size="9" fill="#888888" font-family="Consolas,monospace">showRoomDetail(roomId)</text>
+  <text x="1295" y="423" font-size="9" fill="#888888" font-family="Consolas,monospace">→ GET /api/v1/rooms/:id/players</text>
+  <text x="1295" y="441" font-size="9" fill="#888888" font-family="Consolas,monospace">→ 渲染 玩家列表 / 房间信息 / 隧道 标签页</text>
+
+  <text x="1295" y="479" font-size="11" font-weight="bold" fill="#e05555" font-family="PingFang SC,Microsoft YaHei,sans-serif">关闭 / 强制关闭 / 删除</text>
+  <text x="1295" y="499" font-size="9" fill="#888888" font-family="Consolas,monospace">closeRoomById → DELETE /api/v1/rooms/:id</text>
+  <text x="1295" y="517" font-size="9" fill="#888888" font-family="Consolas,monospace">forceCloseRoomById → DELETE + 清空玩家</text>
+  <text x="1295" y="535" font-size="9" fill="#888888" font-family="Consolas,monospace">deleteRoomById → rooms.delete() 前端移除</text>
+  <text x="1295" y="553" font-size="9" fill="#888888" font-family="Consolas,monospace">startRoomById → status='waiting' 本地状态</text>
+
+  <text x="1295" y="591" font-size="11" font-weight="bold" fill="#5a8ec0" font-family="PingFang SC,Microsoft YaHei,sans-serif">数据流方向</text>
+  <text x="1295" y="611" font-size="9" fill="#888888" font-family="Consolas,monospace">后端 → fetch → 内存(engineStats/rooms)</text>
+  <text x="1295" y="629" font-size="9" fill="#888888" font-family="Consolas,monospace">内存 → renderAll → DOM 更新</text>
+  <text x="1295" y="647" font-size="9" fill="#888888" font-family="Consolas,monospace">用户操作 → API 调用 → 后端处理 →</text>
+  <text x="1295" y="665" font-size="9" fill="#888888" font-family="Consolas,monospace">→ 下次轮询自动同步最新状态</text>
+
+  <text x="1295" y="703" font-size="11" font-weight="bold" fill="#cc88cc" font-family="PingFang SC,Microsoft YaHei,sans-serif">错误处理</text>
+  <text x="1295" y="723" font-size="9" fill="#888888" font-family="Consolas,monospace">apiGet → 失败返回 null</text>
+  <text x="1295" y="741" font-size="9" fill="#888888" font-family="Consolas,monospace">apiPost → catch → showToast 错误提示</text>
+  <text x="1295" y="759" font-size="9" fill="#888888" font-family="Consolas,monospace">apiDelete → catch → showToast 错误提示</text>
+  <text x="1295" y="777" font-size="9" fill="#888888" font-family="Consolas,monospace">轮询失败 → 保留上次数据, console.warn</text>
+
+  <text x="1295" y="815" font-size="11" font-weight="bold" fill="#aaaaaa" font-family="PingFang SC,Microsoft YaHei,sans-serif">关键 API 对照</text>
+  <text x="1295" y="835" font-size="9" fill="#888888" font-family="Consolas,monospace">apiGet(path)       → GET 请求</text>
+  <text x="1295" y="853" font-size="9" fill="#888888" font-family="Consolas,monospace">apiPost(path,body) → POST JSON</text>
+  <text x="1295" y="871" font-size="9" fill="#888888" font-family="Consolas,monospace">apiDelete(path)    → DELETE</text>
+  <text x="1295" y="889" font-size="9" fill="#888888" font-family="Consolas,monospace">syncAll()          → 并行拉取 GET stats+rooms+config</text>
+
+  <text x="1295" y="915" font-size="10" fill="#e05555" font-family="PingFang SC,Microsoft YaHei,sans-serif">已修复: error_handler 不再覆盖路由 404</text>
+  <text x="1295" y="933" font-size="9" fill="#888888" font-family="Consolas,monospace">res.body.empty() 检查防止覆盖已有响应体</text>
+
+  <!-- 图例 -->
+  <text x="1295" y="925" font-size="11" font-weight="bold" fill="#aaaaaa" font-family="PingFang SC,Microsoft YaHei,sans-serif">图例</text>
+  <line x1="1295" y1="941" x2="1340" y2="941" stroke="#6faa6f" stroke-width="2" marker-end="url(#aGet)"/>
+  <text x="1350" y="944" font-size="9" fill="#888888" font-family="Consolas,monospace">GET 查询</text>
+  <line x1="1295" y1="957" x2="1340" y2="957" stroke="#e8b23d" stroke-width="2" marker-end="url(#aPost)"/>
+  <text x="1350" y="960" font-size="9" fill="#888888" font-family="Consolas,monospace">POST 创建</text>
+  <line x1="1295" y1="973" x2="1340" y2="973" stroke="#e05555" stroke-width="2" marker-end="url(#aDel)"/>
+  <text x="1350" y="976" font-size="9" fill="#888888" font-family="Consolas,monospace">DELETE 删除</text>
+  <line x1="1295" y1="989" x2="1340" y2="989" stroke="#5a8ec0" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="1350" y="992" font-size="9" fill="#888888" font-family="Consolas,monospace">轮询 / 定时任务</text>
+
+  <text x="1425" y="1030" font-size="9" fill="#555555" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">云驿 yunyi.html · 2026-07-26 (v1.0.1 正式版)</text>
+
+  <!-- ============================================================ -->
+  <!--  底部: 房间 CRUD 完整流程                                       -->
+  <!-- ============================================================ -->
+
+  <rect x="50" y="610" width="800" height="130" rx="10" fill="#222233" stroke="#444466" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="450" y="636" font-size="14" font-weight="bold" fill="#8888aa" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">房间生命周期完整流程（房主视角）</text>
+  <line x1="65" y1="646" x2="835" y2="646" stroke="#333344" stroke-width="0.5"/>
+
+  <text x="80" y="670" font-size="10" fill="#ccaa77" font-family="Consolas,monospace">1. 打开创建弹窗</text>
+  <text x="240" y="670" font-size="10" fill="#ccaa77" font-family="Consolas,monospace">2. POST /rooms</text>
+  <text x="380" y="670" font-size="10" fill="#ccaa77" font-family="Consolas,monospace">3. RoomResult{code}</text>
+  <text x="540" y="670" font-size="10" fill="#ccaa77" font-family="Consolas,monospace">4. 复制分享连接码</text>
+  <text x="700" y="670" font-size="10" fill="#ccaa77" font-family="Consolas,monospace">5. 玩家连入 → 隧道配对</text>
+
+  <text x="80" y="698" font-size="10" fill="#88aacc" font-family="Consolas,monospace">6. 查看详情(玩家列表)</text>
+  <text x="240" y="698" font-size="10" fill="#88aacc" font-family="Consolas,monospace">7. 5s轮询更新状态</text>
+  <text x="400" y="698" font-size="10" fill="#cc8866" font-family="Consolas,monospace">8. 关闭/强制关闭</text>
+  <text x="560" y="698" font-size="10" fill="#cc8866" font-family="Consolas,monospace">9. DELETE /rooms/:id</text>
+  <text x="720" y="698" font-size="10" fill="#cc6666" font-family="Consolas,monospace">10. 删除房间(前端)</text>
+
+  <!-- 流程连线 -->
+  <line x1="190" y1="663" x2="235" y2="663" stroke="#e8b23d" stroke-width="1" marker-end="url(#aPost)"/>
+  <line x1="345" y1="663" x2="375" y2="663" stroke="#6faa6f" stroke-width="1" marker-end="url(#aGet)"/>
+  <line x1="490" y1="663" x2="535" y2="663" stroke="#aaaacc" stroke-width="1" marker-end="url(#aEvt)"/>
+  <line x1="645" y1="663" x2="695" y2="663" stroke="#5a8ec0" stroke-width="1" marker-end="url(#aPoll)"/>
+
+  <!-- ============================================================ -->
+  <!-- 底部: 错误码                                                -->
+  <!-- ============================================================ -->
+
+  <rect x="50" y="760" width="400" height="110" rx="8" fill="#1a1a2e" stroke="#444466" stroke-width="1"/>
+  <text x="250" y="782" font-size="12" font-weight="bold" fill="#8888aa" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif">HTTP 错误码速查</text>
+  <text x="70" y="802" font-size="10" fill="#e05555" font-family="Consolas,monospace">200 OK</text><text x="150" y="802" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">请求成功</text>
+  <text x="70" y="820" font-size="10" fill="#e05555" font-family="Consolas,monospace">201 Created</text><text x="150" y="820" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">房间创建成功</text>
+  <text x="70" y="838" font-size="10" fill="#e05555" font-family="Consolas,monospace">400 BadRequest</text><text x="150" y="838" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">参数不合法</text>
+  <text x="70" y="856" font-size="10" fill="#e05555" font-family="Consolas,monospace">404 NotFound</text><text x="150" y="856" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">房间不存在</text>
+  <text x="250" y="802" font-size="10" fill="#e05555" font-family="Consolas,monospace">409 Conflict</text><text x="330" y="802" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">端口池已满</text>
+  <text x="250" y="820" font-size="10" fill="#e05555" font-family="Consolas,monospace">500 InternalErr</text><text x="330" y="820" font-size="10" fill="#888888" font-family="PingFang SC,Microsoft YaHei,sans-serif">服务器内部错误</text>
+
+</svg>
+</body>
+</html>

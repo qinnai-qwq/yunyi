@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="app">
+      <UniqueIdentifier>{88be5e68-9f5b-400e-8684-de906f8573d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NetEngine">
+      <UniqueIdentifier>{d4428fba-188f-4330-99b2-318400beb3e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\common">
+      <UniqueIdentifier>{fc6eab75-0139-42d6-a6fd-814a5f56c6b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\component">
+      <UniqueIdentifier>{4f766e9d-fe74-45a9-9b24-a6a6375ef92f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\hostagent">
+      <UniqueIdentifier>{d1764a29-2a06-4c43-a2eb-2ebecb6fd9e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\relay">
+      <UniqueIdentifier>{10e058ce-57f8-40c3-a905-2121ed9b9ee3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\relay\webview">
+      <UniqueIdentifier>{b923764f-4e95-47c3-9159-ccefae282f24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="app\gui">
+      <UniqueIdentifier>{3bf25b63-cc3a-415e-b855-94d761fa7d08}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="NetEngine\AutoreleasePool.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\Director.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\FrameCodec.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\FrameDispatcher.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\PortPool.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\Ref.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\Scheduler.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\Session.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\TlsPskContext.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\TransportCore.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\TunnelManager.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="app\main.cpp">
+      <Filter>app</Filter>
+    </ClCompile>
+    <ClCompile Include="app\common\Config.cpp">
+      <Filter>app\common</Filter>
+    </ClCompile>
+    <ClCompile Include="app\component\ConnectionCode.cpp">
+      <Filter>app\component</Filter>
+    </ClCompile>
+    <ClCompile Include="app\component\ControlChannel.cpp">
+      <Filter>app\component</Filter>
+    </ClCompile>
+    <ClCompile Include="app\component\RoomRegistry.cpp">
+      <Filter>app\component</Filter>
+    </ClCompile>
+    <ClCompile Include="app\hostagent\HostAgentApp.cpp">
+      <Filter>app\hostagent</Filter>
+    </ClCompile>
+    <ClCompile Include="app\relay\HttpApiRouter.cpp">
+      <Filter>app\relay</Filter>
+    </ClCompile>
+    <ClCompile Include="app\relay\RelayApp.cpp">
+      <Filter>app\relay</Filter>
+    </ClCompile>
+    <ClCompile Include="app\gui\main.cpp">
+      <Filter>app\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="NetEngine\NetUtil.cpp">
+      <Filter>NetEngine</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NetEngine\AutoreleasePool.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\Director.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\FrameCodec.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\FrameDispatcher.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\NetEngine_H.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\PortPool.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\Ref.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\ResourcePool.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\Scheduler.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\Session.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\TlsPskContext.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\TransportCore.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\TunnelManager.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="app\common\Config.h">
+      <Filter>app\common</Filter>
+    </ClInclude>
+    <ClInclude Include="app\component\ConnectionCode.h">
+      <Filter>app\component</Filter>
+    </ClInclude>
+    <ClInclude Include="app\component\ControlChannel.h">
+      <Filter>app\component</Filter>
+    </ClInclude>
+    <ClInclude Include="app\component\RoomRegistry.h">
+      <Filter>app\component</Filter>
+    </ClInclude>
+    <ClInclude Include="app\hostagent\HostAgentApp.h">
+      <Filter>app\hostagent</Filter>
+    </ClInclude>
+    <ClInclude Include="app\relay\HttpApiRouter.h">
+      <Filter>app\relay</Filter>
+    </ClInclude>
+    <ClInclude Include="app\relay\RelayApp.h">
+      <Filter>app\relay</Filter>
+    </ClInclude>
+    <ClInclude Include="NetEngine\NetUtil.h">
+      <Filter>NetEngine</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app\relay\webview\yunyi.html">
+      <Filter>app\relay\webview</Filter>
+    </None>
+  </ItemGroup>
+</Project>

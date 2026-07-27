@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light only">
+<title>项目结构骨架</title>
+<style>
+  html, body { background:#ffffff !important; margin:0; color-scheme: light only; }
+  body { padding:24px; font-family:"Consolas","Menlo","PingFang SC",monospace; }
+  .title { font-size:16px; font-weight:bold; color:#000000; margin-bottom:14px; }
+  pre { font-size:14.5px; line-height:1.65; color:#000000; margin:0; }
+  .solution { color:#7a3fae; font-weight:bold; }
+  .folder { color:#1e6fb0; font-weight:bold; }
+  .cpp { color:#c25b1e; }
+  .h { color:#2f8f5b; }
+  .comment { color:#999999; }
+</style>
+</head>
+<body>
+<div class="title">云驿 项目结构 v1.0.1 (2026-07-26)</div>
+<pre>
+<span class="solution">云驿GUI.vcxproj</span>                         <span class="comment">GUI 桌面客户端项目 (WebView2)</span>
+<span class="solution">云驿.vcxproj</span>                             <span class="comment">服务端项目 (Relay + HostAgent)</span>
+│
+├─ <span class="folder">NetEngine/</span>                           <span class="comment">静态库 — 三个角色共用，不含业务逻辑</span>
+│  ├─ <span class="h">Director</span>.h/.cpp              <span class="comment">全局单例，引擎唯一门面 (pimpl)</span>
+│  │                               <span class="comment">  + touchRoomHeartbeat() / findRoomByControlSession()</span>
+│  ├─ <span class="h">Ref</span>.h/.cpp                   <span class="comment">引用计数基类</span>
+│  ├─ <span class="h">Scheduler</span>.h/.cpp             <span class="comment">定时器调度 — 心跳/超时/重连退避</span>
+│  ├─ <span class="h">Session</span>.h/.cpp               <span class="comment">TCP 会话基类</span>
+│  ├─ <span class="h">TransportCore</span>.h/.cpp         <span class="comment">IOCP 重叠 I/O (IPv4+IPv6 双栈)</span>
+│  │                               <span class="comment">  + configureKeepalive(30s/10s) 死连接检测</span>
+│  ├─ <span class="h">TlsPskContext</span>.h/.cpp         <span class="comment">OpenSSL TLS-PSK 封装 (memory BIO + std::mutex)</span>
+│  ├─ <span class="h">FrameCodec</span>.h/.cpp            <span class="comment">控制帧编解码 (大端序)</span>
+│  ├─ <span class="h">FrameDispatcher</span>.h/.cpp       <span class="comment">按帧 type 注册/分发处理器</span>
+│  ├─ <span class="h">TunnelManager</span>.h/.cpp         <span class="comment">隧道生命周期 + totalBytesRelayed()</span>
+│  ├─ <span class="h">PortPool</span>.h/.cpp              <span class="comment">端口池自动分配/回收</span>
+│  ├─ <span class="h">NetUtil</span>.h/.cpp               <span class="comment">双栈网络工具 (createSocket/fillAddr)</span>
+│  ├─ <span class="h">ResourcePool</span>.h                     <span class="comment">高频对象复用池 (模板类, header-only)</span>
+│  ├─ <span class="h">AutoreleasePool</span>.h/.cpp        <span class="comment">延迟释放池</span>
+│  └─ <span class="h">NetEngine_H</span>.h                       <span class="comment">总头文件</span>
+│
+├─ <span class="folder">app/</span>                                 <span class="comment">业务逻辑层 — 按角色链接 NetEngine</span>
+│  ├─ <span class="folder">common/</span>
+│  │  └─ <span class="h">Config</span>.h/.cpp               <span class="comment">全局配置 — 公网IP/端口范围/心跳/keepalive</span>
+│  ├─ <span class="folder">component/</span>
+│  │  ├─ <span class="h">RoomRegistry</span>.h/.cpp        <span class="comment">房间注册表 + 超时检测 (心跳同步 ✓)</span>
+│  │  ├─ <span class="h">ControlChannel</span>.h/.cpp      <span class="comment">控制连接状态机 + 心跳 + 重连</span>
+│  │  │                               <span class="comment">  + registerRoomAsync() 异步等待 ACK</span>
+│  │  └─ <span class="h">ConnectionCode</span>.h/.cpp      <span class="comment">连接码生成/解析 "IP:Port"</span>
+│  ├─ <span class="folder">gui/</span>
+│  │  └─ <span class="cpp">main.cpp</span>                      <span class="comment">Win32 + WebView2 无边框窗口宿主</span>
+│  ├─ <span class="folder">relay/</span>
+│  │  ├─ <span class="h">RelayApp</span>.h/.cpp              <span class="comment">中继服务器主程序 (引擎 + HTTP)</span>
+│  │  │                               <span class="comment">  + checkStaleRooms() RoomRegistry 超时清理</span>
+│  │  ├─ <span class="h">HttpApiRouter</span>.h/.cpp         <span class="comment">REST API 路由 (RoomRegistry 同步)</span>
+│  │  └─ <span class="folder">webview/</span>
+│  │     └─ yunyi.html                  <span class="comment">WebUI SPA (双角色: relay/host 自适应)</span>
+│  ├─ <span class="folder">hostagent/</span>
+│  │  └─ <span class="h">HostAgentApp</span>.h/.cpp          <span class="comment">房主端 (数据隧道 + HTTP 服务器)</span>
+│  │                                  <span class="comment">  + /api/v1/rooms 通过 REGISTER 帧创建</span>
+│  └─ <span class="cpp">main.cpp</span>                      <span class="comment">CLI 入口 (--relay / --host)</span>
+│
+├─ <span class="folder">third_party/</span>                         <span class="comment">已集成第三方库</span>
+│  ├─ <span class="folder">httplib/</span>         httplib.h           <span class="comment">cpp-httplib HTTP 服务器 (双端共用)</span>
+│  ├─ <span class="folder">nlohmann_json/</span>  json.hpp            <span class="comment">nlohmann/json 序列化</span>
+│  └─ <span class="folder">openssl/</span>         include/ + lib/     <span class="comment">OpenSSL 3.x (libssl + libcrypto)</span>
+│
+├─ <span class="folder">tools/</span>                               <span class="comment">工具脚本</span>
+│  ├─ test_tunnel.py                           <span class="comment">数据隧道端到端测试</span>
+│  └─ installer.nsi                            <span class="comment">NSIS 安装包脚本</span>
+│
+├─ <span class="folder">webview2-sdk/</span>                        <span class="comment">Microsoft Edge WebView2 SDK</span>
+│
+├─ <span class="folder">docs/</span>                                <span class="comment">设计文档</span>
+│  ├─ Document.md                              <span class="comment">架构设计文档</span>
+│  ├─ protocol.md                              <span class="comment">控制帧协议规范</span>
+│  ├─ rest-api.md                              <span class="comment">REST API 手册 (含双角色 + 新字段)</span>
+│  ├─ director-api.md                          <span class="comment">Director 公开接口手册</span>
+│  └─ CHANGELOG.md                             <span class="comment">开发日志 (v1.0.1 架构修复)</span>
+│
+└─ <span class="folder">SVG/</span>                                 <span class="comment">蓝图 / 架构图</span>
+   ├─ 引擎架构图.html                           <span class="comment">项目结构骨架 (当前文件)</span>
+   ├─ 引擎接口蓝图.html                         <span class="comment">模块接口 + 调用关系</span>
+   └─ 前端接口蓝图.html                         <span class="comment">WebUI ↔ REST API</span>
+</pre>
+</body>
+</html>

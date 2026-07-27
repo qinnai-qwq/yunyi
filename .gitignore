@@ -1,0 +1,26 @@
+# Build outputs
+dist/
+x64/
+Debug/
+Release/
+*.exe
+*.dll
+*.pdb
+*.obj
+*.ilk
+*.exp
+*.lib
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.slnx.session
+
+# IDE
+.idea/
+.vscode/
+
+# SDKs (downloadable)
+webview2-sdk/
+third_party/
