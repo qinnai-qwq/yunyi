@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "云驿\\x64\\Debug\\Ref.obj",
+            "outputs": [
+                "云驿\\x64\\Debug\\Ref.cpp.obj.dt.module.json",
+                "云驿\\x64\\Debug\\Ref.cpp.obj.dt.d.json"
+            ],
+            "requires": []
+        }
+    ]
+}
