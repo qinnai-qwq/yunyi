@@ -500,19 +500,19 @@ void HttpApiRouter::registerRoutes(httplib::Server& svr) {
     });
 
     // ========================================================
-    //  GET /Icon.png  —  图标资源
+    //  GET /bg.jpg  —  背景图片
     // ========================================================
-    svr.Get("/Icon.png", [](const httplib::Request&, httplib::Response& res) {
+    svr.Get("/bg.jpg", [](const httplib::Request&, httplib::Response& res) {
         const char* searchPaths[] = {
-            "webview/Icon.png",
-            "app/relay/webview/Icon.png",
+            "webview/bg.jpg",
+            "app/relay/webview/bg.jpg",
         };
         std::ifstream file;
         for (auto* p : searchPaths) { file.open(p, std::ios::binary); if (file.is_open()) break; }
         if (file.is_open()) {
             std::string content((std::istreambuf_iterator<char>(file)),
                                  std::istreambuf_iterator<char>());
-            res.set_content(content, "image/png");
+            res.set_content(content, "image/jpeg");
         } else {
             res.status = 404;
         }

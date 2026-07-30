@@ -1,0 +1,113 @@
+========== 云驿 房主端 v1.0.1 ==========
+启动时间: 2026-07-30 08:47:52
+中继地址: 2408:8469:350:9850:4d8f:38d:75fc:6829:40000
+本地MC端口: 25565  HTTP端口: 8081
+==========================================
+2026-07-30 08:47:52 | 房主端已启动（空闲模式），等待连接指令
+========== 云驿 中继服务器 v1.0.1 ==========
+启动时间: 2026-07-30 08:47:52
+公网IP: 2408:8469:350:9850:4d8f:38d:75fc:6829  控制端口: 40000  HTTP端口: 8080
+端口池: 40001-41000
+==========================================
+2026-07-30 08:47:52 | 公网IP已更新: 127.0.0.1 -> 2408:8469:350:9850:4d8f:38d:75fc:6829
+2026-07-30 08:47:52 | 中继服务器已启动, 公网IP: 2408:8469:350:9850:4d8f:38d:75fc:6829
+2026-07-30 08:47:52 | 控制端口: 40000 HTTP端口: 8080
+========== HTTP 日志 2026-07-30 08:47:52 ==========
+08:47:53 | GET / | 200
+08:47:53 | GET /bg.jpg | 404
+08:47:53 | GET /api/v1/ping | 200
+08:47:53 | GET /api/v1/stats | 200
+08:47:53 | GET /api/v1/rooms | 200
+08:47:53 | GET /api/v1/config | 200
+08:47:55 | GET /api/v1/logs | 200
+08:47:57 | GET /api/v1/stats | 200
+08:47:57 | GET /api/v1/rooms | 200
+08:47:57 | GET /api/v1/config | 200
+08:47:57 | GET /api/v1/stats | 200
+08:47:57 | GET /api/v1/rooms | 200
+08:47:57 | GET /api/v1/config | 200
+08:47:57 | GET /api/v1/logs | 200
+08:47:59 | GET /api/v1/logs | 200
+08:48:01 | GET /api/v1/logs | 200
+08:48:03 | GET /api/v1/logs | 200
+08:48:05 | GET /api/v1/logs | 200
+08:48:07 | GET /api/v1/logs | 200
+08:48:09 | GET /api/v1/logs | 200
+08:48:11 | GET /api/v1/logs | 200
+08:48:13 | GET /api/v1/logs | 200
+08:48:15 | GET /api/v1/logs | 200
+08:48:16 | GET /api/v1/stats | 200
+08:48:16 | GET /api/v1/rooms | 200
+08:48:16 | GET /api/v1/config | 200
+08:48:17 | GET /api/v1/stats | 200
+08:48:17 | GET /api/v1/rooms | 200
+08:48:17 | GET /api/v1/config | 200
+08:48:17 | GET /api/v1/stats | 200
+08:48:17 | GET /api/v1/rooms | 200
+08:48:17 | GET /api/v1/config | 200
+08:48:17 | GET /api/v1/logs | 200
+08:48:18 | GET /api/v1/stats | 200
+08:48:18 | GET /api/v1/rooms | 200
+08:48:18 | GET /api/v1/config | 200
+08:48:18 | GET /api/v1/stats | 200
+08:48:18 | GET /api/v1/rooms | 200
+08:48:18 | GET /api/v1/config | 200
+08:48:19 | GET /api/v1/logs | 200
+08:48:20 | GET /api/v1/stats | 200
+08:48:20 | GET /api/v1/rooms | 200
+08:48:20 | GET /api/v1/config | 200
+08:48:21 | GET /api/v1/stats | 200
+08:48:21 | GET /api/v1/rooms | 200
+08:48:21 | GET /api/v1/config | 200
+08:48:21 | GET /api/v1/logs | 200
+08:48:23 | GET /api/v1/logs | 200
+08:48:24 | GET /api/v1/stats | 200
+08:48:24 | GET /api/v1/rooms | 200
+08:48:24 | GET /api/v1/config | 200
+08:48:25 | GET /api/v1/stats | 200
+08:48:25 | GET /api/v1/rooms | 200
+08:48:25 | GET /api/v1/config | 200
+08:48:25 | GET /api/v1/logs | 200
+08:48:26 | GET /api/v1/stats | 200
+08:48:26 | GET /api/v1/rooms | 200
+08:48:26 | GET /api/v1/config | 200
+08:48:27 | GET /api/v1/stats | 200
+08:48:27 | GET /api/v1/rooms | 200
+08:48:27 | GET /api/v1/config | 200
+08:48:27 | GET /api/v1/logs | 200
+08:48:28 | GET /api/v1/stats | 200
+08:48:28 | GET /api/v1/rooms | 200
+08:48:28 | GET /api/v1/config | 200
+08:48:28 | GET /api/v1/stats | 200
+08:48:28 | GET /api/v1/rooms | 200
+08:48:28 | GET /api/v1/config | 200
+08:48:29 | GET /api/v1/logs | 200
+08:48:31 | GET /api/v1/logs | 200
+08:48:33 | GET /api/v1/logs | 200
+08:48:35 | GET /api/v1/logs | 200
+08:48:37 | GET /api/v1/stats | 200
+08:48:37 | GET /api/v1/rooms | 200
+08:48:37 | GET /api/v1/config | 200
+08:48:37 | GET /api/v1/logs | 200
+08:48:38 | GET /api/v1/stats | 200
+08:48:38 | GET /api/v1/rooms | 200
+08:48:38 | GET /api/v1/config | 200
+08:48:39 | GET /api/v1/logs | 200
+08:48:41 | GET /api/v1/logs | 200
+08:48:43 | GET /api/v1/logs | 200
+08:48:45 | GET /api/v1/logs | 200
+08:48:47 | GET /api/v1/logs | 200
+08:48:49 | GET /api/v1/logs | 200
+08:48:51 | GET /api/v1/logs | 200
+08:48:53 | GET /api/v1/logs | 200
+08:48:55 | GET /api/v1/logs | 200
+08:48:57 | GET /api/v1/logs | 200
+08:48:59 | GET /api/v1/logs | 200
+08:49:01 | GET /api/v1/logs | 200
+08:49:03 | GET /api/v1/logs | 200
+08:49:05 | GET /api/v1/logs | 200
+08:49:07 | GET /api/v1/logs | 200
+08:49:09 | GET /api/v1/logs | 200
+08:49:11 | GET /api/v1/logs | 200
+08:49:13 | GET /api/v1/logs | 200
+08:49:15 | GET /api/v1/logs | 200
