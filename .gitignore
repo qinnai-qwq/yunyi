@@ -7,3 +7,20 @@
 # IDE
 .idea/
 .vscode/
+
+# Build output
+x64/
+*.pdb
+*.ilk
+*.obj
+*.log
+*.tlog
+
+# WebView2 browser cache (locked files)
+*WebView2/
+
+# Logs
+logs/
+
+# Release zip
+dist/*.zip
