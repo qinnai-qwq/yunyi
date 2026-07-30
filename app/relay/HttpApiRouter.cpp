@@ -379,7 +379,7 @@ void HttpApiRouter::registerRoutes(httplib::Server& svr) {
             {"portPoolUsed",     stats.portPoolUsed},
             {"portPoolTotal",    stats.portPoolTotal},
             {"bytesRelayed",     stats.bytesRelayed},
-            {"version",          "1.0.1"},
+            {"version",          "1.1.0"},
             {"protocolVersion",  1}
         };
 
@@ -463,7 +463,7 @@ void HttpApiRouter::registerRoutes(httplib::Server& svr) {
         json resp = {
             {"status",    "ok"},
             {"role",      "relay"},
-            {"version",   "1.0.1"},
+            {"version",   "1.1.0"},
             {"protocol",  1},
             {"serverIp",  _publicIp},
             {"serverTime", isoNow()}

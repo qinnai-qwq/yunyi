@@ -56,7 +56,7 @@ bool RelayApp::init(const AppConfig& cfg) {
         logFile = std::make_shared<std::ofstream>(
             logPath, std::ios::out | std::ios::app);
         if (logFile->is_open()) {
-            *logFile << "========== 云驿 中继服务器 v1.0.1 ==========\n"
+            *logFile << "========== 云驿 中继服务器 v1.1.0 ==========\n"
                      << "启动时间: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "\n"
                      << "公网IP: " << cfg.publicIp << "  控制端口: " << cfg.controlPort
                      << "  HTTP端口: " << cfg.httpPort << "\n"

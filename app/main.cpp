@@ -20,7 +20,7 @@ namespace {
 void printBanner() {
     std::cout << R"(
   +====================================+
-  |       云驿 Yun Yi  v1.0.1          |
+  |       云驿 Yun Yi  v1.1.0          |
   |   Minecraft 中继服务 / 无需公网 IP |
   +====================================+
 )" << std::endl;

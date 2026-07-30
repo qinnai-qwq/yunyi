@@ -167,37 +167,64 @@
             border: 1px solid rgba(255, 255, 255, 0.35);
             border-radius: 12px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.12);
-            width: 210px; padding: 6px;
-            display: none;
-            opacity: 0;
-            transform: translateY(-6px);
-            transition: all var(--t-fast) var(--ease-out);
+            width: 210px; overflow: hidden;
+            display: block; opacity: 0;
+            transform: translateY(-12px) scale(0.96);
+            transform-origin: top right;
+            max-height: 0;
+            pointer-events: none;
+            transition: max-height 0.4s var(--ease-spring),
+                        opacity 0.28s var(--ease-out),
+                        transform 0.32s var(--ease-spring);
         }
         .theme-panel.show {
-            display: block;
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            max-height: 800px;
             pointer-events: auto;
         }
         .theme-row {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 12px; border-radius: 8px;
-            cursor: pointer; transition: background var(--t-fast);
-            pointer-events: auto;
+            padding: 9px 12px; border-radius: 8px;
+            cursor: pointer; pointer-events: auto;
+            opacity: 0; transform: translateX(-4px);
+            transition: background var(--t-fast),
+                        opacity 0.3s var(--ease-out),
+                        transform 0.3s var(--ease-out);
         }
+        .theme-panel.show .theme-row:nth-child(1) { transition-delay: 0.04s; }
+        .theme-panel.show .theme-row:nth-child(4) { transition-delay: 0.10s; }
+        .theme-panel.show .theme-row:nth-child(8) { transition-delay: 0.16s; }
+        .theme-panel.show .theme-row { opacity: 1; transform: translateX(0); }
+        #bg-color-section .theme-row { opacity: 0; transform: translateX(-4px); }
+        .theme-panel.show #bg-color-section .theme-row { opacity: 1; transform: translateX(0); transition-delay: 0.13s; }
         .theme-row:hover { background: rgba(255,255,255,0.2); }
         .theme-label { font-size: 13px; font-weight: 600; color: var(--text); }
         .theme-val { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
         .theme-glass-opts {
-            display: flex; gap: 4px; padding: 2px 10px 12px;
+            display: flex; gap: 4px; padding: 5px 12px;
             pointer-events: auto;
+        }
+        #glass-level-opts, #blur-level-opts, #bg-color-opts,
+        #glass-custom-row, #blur-custom-row, #bg-color-custom-row {
+            opacity: 0; transform: translateY(-6px);
+            transition: opacity 0.24s var(--ease-out) 0.08s,
+                        transform 0.24s var(--ease-out) 0.08s;
+        }
+        #glass-level-opts[style*="display: flex"],
+        #blur-level-opts[style*="display: flex"],
+        #bg-color-opts[style*="display: flex"],
+        #glass-custom-row[style*="display: flex"],
+        #blur-custom-row[style*="display: flex"],
+        #bg-color-custom-row[style*="display: flex"] {
+            opacity: 1; transform: translateY(0);
         }
         .theme-opt {
             flex: 1; padding: 7px 0; border-radius: 7px;
             border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15);
             font-family: var(--font-ui); font-size: 12px; font-weight: 600;
             color: var(--text-secondary); cursor: pointer;
-            transition: all var(--t-fast) var(--ease-out);
+            transition: all 0.16s var(--ease-out);
             pointer-events: auto;
         }
         .theme-opt:hover { background: rgba(255,255,255,0.25); }
@@ -338,8 +365,8 @@
 
         /* ===== Stats Modules ===== */
         .stats-modules {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 14px; margin-bottom: 22px;
+            display: flex; flex-direction: column;
+            gap: 14px;
         }
         .stat-module {
             background: rgba(255, 255, 255, 0.12);
@@ -367,6 +394,44 @@
         .stat-module .stat-item:last-child { border-bottom: none; }
         .stat-module .stat-item .label { color: var(--text-secondary); font-weight: 500; }
         .stat-module .stat-item .value { font-family: var(--font-mono); font-weight: 600; }
+
+        /* ===== Home Row (device + stats) ===== */
+        .home-row {
+            display: flex; gap: 14px; margin-bottom: 22px;
+        }
+        .device-card {
+            flex: 0 0 260px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px) saturate(1.25);
+            -webkit-backdrop-filter: blur(16px) saturate(1.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-lg); padding: 16px 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            transition: all var(--t-normal) var(--ease-out); position: relative; overflow: hidden;
+        }
+        .device-card:hover { border-color: rgba(255,255,255,0.5); transform: scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .device-item {
+            padding: 9px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        .device-item:last-child { border-bottom: none; }
+        .device-item .item-label {
+            font-size: 12px; color: var(--text-tertiary); font-weight: 500;
+            margin-bottom: 3px;
+        }
+        .device-item .item-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 8px;
+        }
+        .device-item .item-value {
+            font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+            flex: 1; min-width: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .device-item .item-usage {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+            color: var(--primary); flex: 0 0 auto; white-space: nowrap;
+        }
 
         /* ===== Relay IP + Port Pool duo ===== */
         .relay-duo {
@@ -941,6 +1006,9 @@
     <!-- ===== Titlebar ===== -->
     <div class="titlebar">
         <div class="titlebar-spacer"></div>
+        <button class="titlebar-btn" onclick="showView('troubleshoot')" title="问题解决" style="font-family:var(--font-ui);font-size:11.5px;font-weight:600;width:auto;padding:0 10px;gap:0;">
+            问题解决
+        </button>
         <div class="theme-wrap">
             <button class="titlebar-btn theme-btn" onclick="toggleThemePanel(event)" title="主题" style="font-family:var(--font-ui);font-size:11.5px;font-weight:600;width:auto;padding:0 10px;gap:0;">
                 主题
@@ -974,7 +1042,20 @@
                 </div>
                 <div class="theme-row">
                     <span class="theme-label">背景图片</span>
-                    <div class="switch on" id="sw-bgimg" onclick="event.stopPropagation();toggleBgImage()"></div>
+                    <div class="switch on" id="sw-bgimg"></div>
+                </div>
+                <div id="bg-color-section" style="display:none;">
+                    <div class="theme-row" onclick="toggleColorOptions()">
+                        <span class="theme-label">背景颜色</span>
+                        <span class="theme-val" id="bg-color-text">默认</span>
+                    </div>
+                    <div class="theme-glass-opts" id="bg-color-opts" style="display:none;">
+                        <button class="theme-opt active" data-color="default">默认</button>
+                        <button class="theme-opt" data-color="custom">自定义</button>
+                    </div>
+                    <div class="theme-custom" id="bg-color-custom-row" style="display:none;">
+                        <input type="text" id="bg-color-custom-val" placeholder="#FDF5E6" oninput="applyBgColor('custom')" style="width:87px;"> <span>HEX/RGB</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1020,12 +1101,16 @@
             </div>
             <div class="rail-spacer"></div>
             <div class="rail-group">
+                <button class="rail-item" data-view="tutorial">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6l2 2h8v12H4V4z" stroke="currentColor" stroke-width="1.8"/><circle cx="11" cy="14" r="0.8" fill="currentColor"/><path d="M11 12v-1.5c0-.3.2-.5.5-.5H14c.3 0 .5.2.5.5 0 .5-.3.8-.5 1l-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    教程
+                </button>
                 <button class="rail-item" data-view="settings">
                     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.4M12 18.6V21M4.9 6.5l1.7 1.7M17.4 15.8l1.7 1.7M3 12h2.4M18.6 12H21M4.9 17.5l1.7-1.7M17.4 8.2l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                     设置
                 </button>
             </div>
-            <div class="rail-version">v1.0-beta</div>
+            <div class="rail-version">v1.1.0</div>
         </div>
 
         <!-- Content Area -->
@@ -1045,53 +1130,48 @@
                     </button>
                 </div>
                 <div class="scroll">
-                    <!-- Stats -->
-                    <div class="stats-modules">
-                        <div class="stat-module relay">
-                            <div class="module-title"><span class="badge"></span> 中继服务器</div>
-                            <div class="stat-item"><span class="label">运行时长</span><span class="value" id="s-uptime">00:00:00</span></div>
-                            <div class="stat-item"><span class="label">活跃房间</span><span class="value" id="s-active-rooms">0</span></div>
-                            <div class="stat-item"><span class="label">活跃隧道</span><span class="value" id="s-active-tunnels">0</span></div>
-                            <div class="stat-item"><span class="label">累计转发流量</span><span class="value" id="s-bytes">0 B</span></div>
+                    <!-- Stats + Device -->
+                    <div class="home-row">
+                        <div class="device-card">
+                            <div class="device-item">
+                                <div class="item-label">处理器</div>
+                                <div class="item-row"><span class="item-value" id="dev-cpu"></span><span class="item-usage" id="dev-cpu-usage"></span></div>
+                            </div>
+                            <div class="device-item">
+                                <div class="item-label">显卡</div>
+                                <div class="item-row"><span class="item-value" id="dev-gpu"></span><span class="item-usage" id="dev-gpu-usage"></span></div>
+                            </div>
+                            <div class="device-item">
+                                <div class="item-label">内存</div>
+                                <div class="item-row"><span class="item-value" id="dev-memory"></span><span class="item-usage" id="dev-memory-usage"></span></div>
+                            </div>
+                            <div class="device-item">
+                                <div class="item-label">主板</div>
+                                <div class="item-row"><span class="item-value" id="dev-motherboard"></span></div>
+                            </div>
+                            <div class="device-item">
+                                <div class="item-label">硬盘</div>
+                                <div class="item-row"><span class="item-value" id="dev-disk"></span><span class="item-usage" id="dev-disk-usage"></span></div>
+                            </div>
+                            <div class="device-item">
+                                <div class="item-label">操作系统</div>
+                                <div class="item-row"><span class="item-value" id="dev-os"></span></div>
+                            </div>
                         </div>
-                        <div class="stat-module ports">
-                            <div class="module-title"><span class="badge"></span> 端口池</div>
-                            <div class="stat-item"><span class="label">已用 / 总量</span><span class="value" id="s-ports">0 / 1001</span></div>
-                            <div class="stat-item"><span class="label">活跃连接数</span><span class="value" id="s-connections">0</span></div>
-                            <div class="stat-item"><span class="label">累计房间</span><span class="value" id="s-total-rooms">0</span></div>
-                            <div class="stat-item"><span class="label">协议版本</span><span class="value">v1</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div class="panel">
-                        <div class="panel-head"><h3>快捷操作</h3><span class="view-sub">选择功能进入对应管理页</span></div>
-                        <div class="panel-body">
-                            <div class="role-split">
-                                <div class="role-card relay" onclick="showView('relay')">
-                                    <div class="role-card-top">
-                                        <div class="role-card-title">
-                                            <span class="role-badge relay">
-                                                <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
-                                            </span>
-                                            中继服务器
-                                        </div>
-                                        <span class="role-count" id="home-relay-status">未启动</span>
-                                    </div>
-                                    <div class="role-card-desc">查看端口池使用情况、控制连接和数据隧道状态。中继服务器是云驿的核心，负责端口分配与字节转发。</div>
-                                </div>
-                                <div class="role-card rooms" onclick="showView('rooms')">
-                                    <div class="role-card-top">
-                                        <div class="role-card-title">
-                                            <span class="role-badge rooms">
-                                                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.8"/></svg>
-                                            </span>
-                                            房间管理
-                                        </div>
-                                        <span class="role-count" id="home-room-count">0 个活跃</span>
-                                    </div>
-                                    <div class="role-card-desc">管理所有联机房间，查看连接码、玩家列表。房主创建房间后，朋友用连接码即可在 MC 中直接进入。</div>
-                                </div>
+                        <div class="stats-modules" style="flex:1;">
+                            <div class="stat-module relay">
+                                <div class="module-title"><span class="badge"></span> 中继服务器</div>
+                                <div class="stat-item"><span class="label">运行时长</span><span class="value" id="s-uptime">00:00:00</span></div>
+                                <div class="stat-item"><span class="label">活跃房间</span><span class="value" id="s-active-rooms">0</span></div>
+                                <div class="stat-item"><span class="label">活跃隧道</span><span class="value" id="s-active-tunnels">0</span></div>
+                                <div class="stat-item"><span class="label">累计转发流量</span><span class="value" id="s-bytes">0 B</span></div>
+                            </div>
+                            <div class="stat-module ports">
+                                <div class="module-title"><span class="badge"></span> 端口池</div>
+                                <div class="stat-item"><span class="label">已用 / 总量</span><span class="value" id="s-ports">0 / 1001</span></div>
+                                <div class="stat-item"><span class="label">活跃连接数</span><span class="value" id="s-connections">0</span></div>
+                                <div class="stat-item"><span class="label">累计房间</span><span class="value" id="s-total-rooms">0</span></div>
+                                <div class="stat-item"><span class="label">协议版本</span><span class="value">v1</span></div>
                             </div>
                         </div>
                     </div>
@@ -1447,6 +1527,26 @@
                     </div>
                 </div>
             </div>
+            <!-- ===== 教程 ===== -->
+            <div class="view" id="view-tutorial">
+                <div class="wip-wrap">
+                    <div class="wip-card">
+                        <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div class="wip-title">功能正在开发</div>
+                        <div class="wip-sub">使用教程即将上线</div>
+                    </div>
+                </div>
+            </div>
+            <!-- ===== 问题解决 ===== -->
+            <div class="view" id="view-troubleshoot">
+                <div class="wip-wrap">
+                    <div class="wip-card">
+                        <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div class="wip-title">功能正在开发</div>
+                        <div class="wip-sub">常见问题解决方案即将上线</div>
+                    </div>
+                </div>
+            </div>
             <!-- ===== 更多 ===== -->
             <div class="view" id="view-more">
                 <div class="wip-wrap">
@@ -1649,7 +1749,7 @@
         heartbeatIntervalMs: 25000,
         roomGracePeriodMs: 45000,
         maxPlayersPerRoom: 10,
-        version: '1.0-beta',
+        version: '1.1.0',
         protocolVersion: 1,
         tlsVersion: 'TLS 1.3'
     };
@@ -2202,6 +2302,37 @@
         }
     }
 
+    // ======================== Device Info ========================
+    window.onDeviceInfo = function(data) {
+        if (!data) return;
+        var set = function(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = val || '';
+        };
+        set('dev-cpu', data.cpu);
+        set('dev-motherboard', data.motherboard);
+        set('dev-os', data.os);
+        // 显卡 / 硬盘 / 内存支持 <br> 换行
+        var gpuEl = document.getElementById('dev-gpu');
+        if (gpuEl) gpuEl.innerHTML = data.gpu || '';
+        var diskEl = document.getElementById('dev-disk');
+        if (diskEl) diskEl.innerHTML = data.disk || '';
+        var memEl = document.getElementById('dev-memory');
+        if (memEl) memEl.innerHTML = data.memory || '';
+    };
+    // 实时硬件占用更新
+    window.onDeviceUsage = function(data) {
+        if (!data) return;
+        var set = function(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = val || '';
+        };
+        if (data.cpu !== undefined) set('dev-cpu-usage', data.cpu + '%');
+        if (data.gpu !== undefined) set('dev-gpu-usage', data.gpu + '%');
+        if (data.memory !== undefined) set('dev-memory-usage', data.memory + '%');
+        if (data.disk !== undefined) set('dev-disk-usage', data.disk + '%');
+    };
+
     // ======================== Render ========================
     function renderAll() {
         renderHomeStats();
@@ -2220,19 +2351,6 @@
         document.getElementById('s-ports').textContent = engineStats.portPoolUsed + ' / ' + engineStats.portPoolTotal;
         document.getElementById('s-connections').textContent = engineStats.totalConnections;
         document.getElementById('s-total-rooms').textContent = engineStats.totalRooms;
-        document.getElementById('home-room-count').textContent = engineStats.activeRooms + ' 个活跃';
-        const homeStatus = document.getElementById('home-relay-status');
-        if (homeStatus) {
-            if (CONFIG.role === 'host') {
-                homeStatus.textContent = '已连接 → ' + (CONFIG.publicIp || '中继');
-            } else if (!CONFIG.relayConfigured) {
-                homeStatus.textContent = '未配置';
-            } else if (!relayRunning) {
-                homeStatus.textContent = '已停止';
-            } else {
-                homeStatus.textContent = '运行中';
-            }
-        }
     }
 
     function getAggregatedStats() {
@@ -2260,7 +2378,6 @@
         if (pct > 90) bar.classList.add('danger');
         else if (pct > 70) bar.classList.add('warn');
         document.getElementById('port-pool-range').textContent = CONFIG.portPoolStart + ' – ' + CONFIG.portPoolEnd;
-
         renderRelayIP();
     }
 
@@ -2601,7 +2718,7 @@
     if (titlebar) {
         titlebar.addEventListener('mousedown', function(e) {
             if (e.target.closest('.titlebar-btn') || e.target.closest('.status-chip') ||
-                e.target.closest('button')) return;
+                e.target.closest('.theme-wrap') || e.target.closest('button')) return;
             try {
                 if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
                     window.chrome.webview.postMessage('drag');
@@ -2709,18 +2826,73 @@
         applyBlurLevel(btn.dataset.level);
     });
 
-    function toggleBgImage() {
+    document.getElementById('sw-bgimg').addEventListener('click', function(e) {
+        e.stopPropagation();
         bgImageOn = !bgImageOn;
-        const sw = document.getElementById('sw-bgimg');
-        sw.classList.toggle('on', bgImageOn);
+        const sw = this;
+        const colorSec = document.getElementById('bg-color-section');
         if (bgImageOn) {
+            sw.classList.add('on');
             document.body.style.removeProperty('background-image');
             document.body.style.removeProperty('background-color');
+            if (colorSec) colorSec.style.display = 'none';
         } else {
-            document.body.style.backgroundImage = 'none';
-            document.body.style.backgroundColor = '#E8EBF0';
+            sw.classList.remove('on');
+            document.body.style.background = 'none';
+            applyStoredBgColor();
+            if (colorSec) colorSec.style.display = 'block';
+        }
+    });
+
+    // 背景颜色
+    var bgColorLevel = 'default';
+    var bgColorCustom = '#FDF5E6';
+    var BG_COLORS = { default: '#FDF5E6', custom: '#FDF5E6' };
+    var BG_COLOR_LABELS = { default: '默认', custom: '自定义' };
+    function applyStoredBgColor() {
+        if (!bgImageOn) {
+            document.body.style.background = BG_COLORS[bgColorLevel];
         }
     }
+    function applyBgColor(level) {
+        bgColorLevel = level;
+        document.getElementById('bg-color-text').textContent = BG_COLOR_LABELS[level];
+        document.querySelectorAll('#bg-color-opts .theme-opt').forEach(function(b) {
+            b.classList.toggle('active', b.dataset.color === level);
+        });
+        var customRow = document.getElementById('bg-color-custom-row');
+        if (level === 'custom') {
+            customRow.style.display = 'flex';
+            var v = document.getElementById('bg-color-custom-val').value.trim();
+            if (v) { BG_COLORS.custom = v; bgColorCustom = v; }
+        } else {
+            customRow.style.display = 'none';
+            if (level === 'default') bgColorCustom = '#FDF5E6';
+        }
+        if (!bgImageOn) {
+            document.body.style.background = level === 'custom' ? (bgColorCustom || '#FDF5E6') : BG_COLORS[level];
+        }
+    }
+    function toggleColorOptions() {
+        var opts = document.getElementById('bg-color-opts');
+        var custom = document.getElementById('bg-color-custom-row');
+        var show = opts.style.display === 'none';
+        opts.style.display = show ? 'flex' : 'none';
+        if (!show) custom.style.display = 'none';
+    }
+    document.getElementById('bg-color-custom-val').addEventListener('input', function() {
+        var v = this.value.trim();
+        if (v && bgColorLevel === 'custom' && !bgImageOn) {
+            document.body.style.background = v;
+        }
+    });
+    // 颜色按钮点击
+    document.querySelectorAll('#bg-color-opts .theme-opt').forEach(function(b) {
+        b.addEventListener('click', function(e) {
+            e.stopPropagation();
+            applyBgColor(this.dataset.color);
+        });
+    });
 
     // close theme panel on outside click
     document.addEventListener('click', function(e) {

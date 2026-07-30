@@ -5,6 +5,8 @@
 #include <dwmapi.h>
 #include <winhttp.h>
 #include <iphlpapi.h>
+#include <setupapi.h>
+#include <devguid.h>
 #include "../../webview2-sdk/build/native/include/WebView2.h"
 #include "../component/NetworkAutoConfig.h"
 #include <wrl/event.h>
@@ -12,12 +14,278 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <vector>
+#include <wbemidl.h>
+#include <comdef.h>
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "wbemuuid.lib")
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "setupapi.lib")
 
 using namespace Microsoft::WRL;
+
+// 读取注册表字符串值
+static std::string RegReadString(HKEY hRoot, const wchar_t* subkey, const wchar_t* valueName) {
+    HKEY hKey;
+    if (RegOpenKeyExW(hRoot, subkey, 0, KEY_READ, &hKey) != ERROR_SUCCESS) return "";
+    wchar_t buf[256]{};
+    DWORD size = sizeof(buf);
+    DWORD type = REG_SZ;
+    if (RegQueryValueExW(hKey, valueName, nullptr, &type, reinterpret_cast<BYTE*>(buf), &size) != ERROR_SUCCESS) {
+        RegCloseKey(hKey);
+        return "";
+    }
+    RegCloseKey(hKey);
+    int len = WideCharToMultiByte(CP_UTF8, 0, buf, -1, nullptr, 0, nullptr, nullptr);
+    std::string result(len, 0);
+    WideCharToMultiByte(CP_UTF8, 0, buf, -1, &result[0], len, nullptr, nullptr);
+    result.resize(len - 1);  // trim null terminator
+    return result;
+}
+
+/** 精简 CPU 名称 */
+static std::string SimplifyCPUName(const std::string& raw) {
+    std::string s = raw;
+    for (auto& suffix : { "w/ Radeon Graphics", "with Radeon Graphics" }) {
+        auto p = s.find(suffix);
+        if (p != std::string::npos) s = s.substr(0, p);
+    }
+    auto dash = s.find("-Core Processor");
+    if (dash != std::string::npos) {
+        while (dash > 0 && s[dash - 1] != ' ') dash--;
+        s = s.substr(0, dash);
+    }
+    for (auto& ch : { "(R)", "(TM)" }) {
+        size_t p;
+        while ((p = s.find(ch)) != std::string::npos) s.erase(p, 2 + (ch[2] == ')'));
+    }
+    while (!s.empty() && s.back() == ' ') s.pop_back();
+    return s;
+}
+
+/** 采集本机硬件信息 */
+static std::string CollectDeviceInfoJSON() {
+    std::ostringstream js;
+
+    // CPU
+    std::string cpu = SimplifyCPUName(RegReadString(HKEY_LOCAL_MACHINE,
+        L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+        L"ProcessorNameString"));
+
+    // GPU
+    std::string gpu;
+    DISPLAY_DEVICEW dd = { sizeof(dd) };
+    if (EnumDisplayDevicesW(nullptr, 0, &dd, 0)) {
+        char buf[128]{};
+        WideCharToMultiByte(CP_UTF8, 0, dd.DeviceString, -1, buf, sizeof(buf), nullptr, nullptr);
+        gpu = buf;
+        for (auto& prefix : { "RTX ", "GTX ", "GT ", "RX ", "Arc " }) {
+            auto p = gpu.find(prefix);
+            if (p != std::string::npos && p > 0) { gpu.insert(p, "<br>"); break; }
+        }
+    }
+
+    // 内存：容量从 OS 获取（准确），品牌/频率从 SMBIOS 补充
+    std::string memory;
+    std::string pn;
+    WORD spd = 0;
+
+    // WMI 查询 Win32_PhysicalMemory：品牌、频率
+    {
+        IWbemLocator* pLoc = nullptr;
+        IWbemServices* pSvc = nullptr;
+        IEnumWbemClassObject* pEnum = nullptr;
+        auto bstr = [](const wchar_t* s) { return _bstr_t(s); };
+        HRESULT hr = CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER,
+            IID_IWbemLocator, (LPVOID*)&pLoc);
+        if (SUCCEEDED(hr) && pLoc) {
+            hr = pLoc->ConnectServer(bstr(L"ROOT\\CIMV2"), nullptr, nullptr, nullptr,
+                0, nullptr, nullptr, &pSvc);
+            if (SUCCEEDED(hr) && pSvc) {
+                CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, nullptr,
+                    RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE);
+                hr = pSvc->ExecQuery(bstr(L"WQL"),
+                    bstr(L"SELECT Manufacturer,PartNumber,Speed FROM Win32_PhysicalMemory"),
+                    WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &pEnum);
+                if (SUCCEEDED(hr) && pEnum) {
+                    IWbemClassObject* pObj = nullptr;
+                    ULONG ret = 0;
+                    while (pEnum->Next(WBEM_INFINITE, 1, &pObj, &ret) == WBEM_S_NO_ERROR && pObj) {
+                        VARIANT vt;
+                        VariantInit(&vt);
+                        auto readStr = [&](const wchar_t* prop) -> std::string {
+                            std::string s;
+                            if (SUCCEEDED(pObj->Get(prop, 0, &vt, nullptr, nullptr)) && vt.vt == VT_BSTR && vt.bstrVal) {
+                                int len = WideCharToMultiByte(CP_UTF8, 0, vt.bstrVal, -1, nullptr, 0, nullptr, nullptr);
+                                if (len > 1) { s.resize(len - 1); WideCharToMultiByte(CP_UTF8, 0, vt.bstrVal, -1, &s[0], len, nullptr, nullptr); }
+                            }
+                            VariantClear(&vt);
+                            return s;
+                        };
+                        if (pn.empty()) {
+                            std::string mfr = readStr(L"Manufacturer");
+                            std::string part = readStr(L"PartNumber");
+                            // 跳过无效厂商名
+                            if (!mfr.empty() && mfr != "Unknown" && mfr != "N/A" && mfr != "0000") {
+                                pn = mfr;
+                            } else if (!part.empty()) {
+                                pn = part;
+                            }
+                            // 清洗后缀，去首尾空白
+                            for (auto& suffix : { " Technology", " Semiconductor", " Electronics" }) {
+                                auto pos = pn.find(suffix);
+                                if (pos != std::string::npos) pn.erase(pos);
+                            }
+                            auto trim = [](std::string& s) {
+                                s.erase(0, s.find_first_not_of(" \t\r\n"));
+                                s.erase(s.find_last_not_of(" \t\r\n") + 1);
+                            };
+                            trim(pn);
+                        }
+                        if (spd == 0) {
+                            VariantClear(&vt); VariantInit(&vt);
+                            if (SUCCEEDED(pObj->Get(L"Speed", 0, &vt, nullptr, nullptr)) && vt.vt == VT_I4 && vt.intVal > 0)
+                                spd = (WORD)vt.intVal;
+                            VariantClear(&vt);
+                        }
+                        pObj->Release();
+                    }
+                }
+            }
+        }
+        if (pEnum) pEnum->Release();
+        if (pSvc) pSvc->Release();
+        if (pLoc) pLoc->Release();
+    }
+
+    // 容量始终用 GetPhysicallyInstalledSystemMemory，不受硬件保留影响
+    ULONGLONG totalKB = 0;
+    if (GetPhysicallyInstalledSystemMemory(&totalKB) && totalKB > 0) {
+        DWORDLONG totalMB = totalKB / 1024;
+        DWORDLONG perGB = (totalMB + 512) / 1024;
+        if (!pn.empty()) memory = pn + "<br>";
+        memory += std::to_string(perGB) + " GB";
+        if (spd > 0) memory += "<br>" + std::to_string(spd) + "MHz";
+    }
+    // 回退：GlobalMemoryStatusEx
+    if (memory.empty()) {
+        MEMORYSTATUSEX msx = { sizeof(msx) };
+        if (GlobalMemoryStatusEx(&msx))
+            memory = std::to_string((msx.ullTotalPhys + 512ULL * 1024 * 1024) / (1024ULL * 1024 * 1024)) + " GB";
+    }
+
+    // 主板
+    std::string mfr = RegReadString(HKEY_LOCAL_MACHINE,
+        L"HARDWARE\\DESCRIPTION\\System\\BIOS", L"BaseBoardManufacturer");
+    std::string mbProd = RegReadString(HKEY_LOCAL_MACHINE,
+        L"HARDWARE\\DESCRIPTION\\System\\BIOS", L"BaseBoardProduct");
+    std::string motherboard = mfr.empty() ? mbProd : (mfr + " " + mbProd);
+    while (!motherboard.empty() && (motherboard.back() == ' ' || motherboard.back() == '.')) motherboard.pop_back();
+
+    // 硬盘：枚举物理磁盘
+    std::string disk;
+    HDEVINFO devInfo = SetupDiGetClassDevsW(&GUID_DEVINTERFACE_DISK, nullptr, nullptr,
+        DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    if (devInfo != INVALID_HANDLE_VALUE) {
+        SP_DEVINFO_DATA devData = { sizeof(devData) };
+        for (DWORD i = 0; SetupDiEnumDeviceInfo(devInfo, i, &devData); i++) {
+            WCHAR friendly[256]{};
+            if (SetupDiGetDeviceRegistryPropertyW(devInfo, &devData, SPDRP_FRIENDLYNAME,
+                    nullptr, (PBYTE)friendly, sizeof(friendly), nullptr)) {
+                char name[256]{};
+                WideCharToMultiByte(CP_UTF8, 0, friendly, -1, name, sizeof(name), nullptr, nullptr);
+                if (!disk.empty()) disk += "<br>";
+                disk += name;
+            }
+        }
+        SetupDiDestroyDeviceInfoList(devInfo);
+    }
+    if (disk.empty()) disk = "未知";
+
+    // 操作系统
+    std::string os = RegReadString(HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"ProductName");
+    if (os.find("Windows 10") != std::string::npos) {
+        std::string bld = RegReadString(HKEY_LOCAL_MACHINE,
+            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentBuild");
+        if (!bld.empty() && std::stoi(bld) >= 22000)
+            os.replace(os.find("Windows 10"), 10, "Windows 11");
+    }
+
+    auto esc = [](const std::string& s) -> std::string {
+        std::string r;
+        for (char c : s) {
+            if (c == '\\') r += "\\\\";
+            else if (c == '\'') r += "\\'";
+            else if (c == '\n') r += "\\n";
+            else if (c == '\r') r += "\\r";
+            else if (c == '\t') r += "\\t";
+            else r += c;
+        }
+        return r;
+    };
+
+    js << "if(window.onDeviceInfo)window.onDeviceInfo({"
+       << "cpu:'" << esc(cpu) << "',"
+       << "gpu:'" << esc(gpu) << "',"
+       << "memory:'" << esc(memory) << "',"
+       << "motherboard:'" << esc(motherboard) << "',"
+       << "disk:'" << esc(disk) << "',"
+       << "os:'" << esc(os) << "'"
+       << "})";
+    return js.str();
+}
+
+/** 采集实时硬件占用，返回 JSON 字符串（每 3s 调用） */
+static std::string CollectDeviceUsageJSON() {
+    // CPU: GetSystemTimes 计算使用率
+    static FILETIME prevIdle{}, prevKernel{}, prevUser{};
+    static bool firstCall = true;
+    int cpuPct = 0;
+    FILETIME idle, kernel, user;
+    if (GetSystemTimes(&idle, &kernel, &user)) {
+        if (!firstCall) {
+            auto toU64 = [](const FILETIME& ft) -> ULONGLONG {
+                return (static_cast<ULONGLONG>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+            };
+            ULONGLONG idleDiff = toU64(idle) - toU64(prevIdle);
+            ULONGLONG kernelDiff = toU64(kernel) - toU64(prevKernel);
+            ULONGLONG userDiff = toU64(user) - toU64(prevUser);
+            ULONGLONG totalDiff = kernelDiff + userDiff;
+            if (totalDiff > 0) {
+                cpuPct = static_cast<int>(100 - (idleDiff * 100 / totalDiff));
+                if (cpuPct < 0) cpuPct = 0;
+                if (cpuPct > 100) cpuPct = 100;
+            }
+        }
+        prevIdle = idle; prevKernel = kernel; prevUser = user;
+        firstCall = false;
+    }
+
+    // 内存: GlobalMemoryStatusEx
+    int memPct = 0;
+    MEMORYSTATUSEX msx = { sizeof(msx) };
+    if (GlobalMemoryStatusEx(&msx)) {
+        memPct = static_cast<int>(msx.dwMemoryLoad);
+    }
+
+    // 硬盘: C: 使用率
+    int diskPct = 0;
+    ULARGE_INTEGER freeBytes, totalBytes;
+    if (GetDiskFreeSpaceExW(L"C:\\", &freeBytes, &totalBytes, nullptr) && totalBytes.QuadPart > 0) {
+        diskPct = static_cast<int>(100 - (freeBytes.QuadPart * 100 / totalBytes.QuadPart));
+    }
+
+    std::ostringstream js;
+    js << "if(window.onDeviceUsage)window.onDeviceUsage({"
+       << "cpu:" << cpuPct << ","
+       << "memory:" << memPct << ","
+       << "disk:" << diskPct
+       << "})";
+    return js.str();
+}
 
 /** 从本机网卡获取公网 IPv6 地址，失败再尝试 IPv4 */
 static std::string DetectPublicIP() {
@@ -260,6 +528,12 @@ HRESULT OnWebViewCreated(HWND hwnd, ICoreWebView2Controller* ctrl) {
                     L"height:0!important;display:none!important}"
                     L"*{scrollbar-width:none!important}'",
                     nullptr);
+                // 推送硬件设备信息
+                std::string diJson = CollectDeviceInfoJSON();
+                int dlen = MultiByteToWideChar(CP_UTF8, 0, diJson.c_str(), -1, nullptr, 0);
+                std::wstring dwjs(dlen, 0);
+                MultiByteToWideChar(CP_UTF8, 0, diJson.c_str(), -1, &dwjs[0], dlen);
+                wv->ExecuteScript(dwjs.c_str(), nullptr);
                 return S_OK;
             }).Get(), nullptr);
 
@@ -341,6 +615,29 @@ HRESULT OnWebViewCreated(HWND hwnd, ICoreWebView2Controller* ctrl) {
             wv->ExecuteScript(wjs.c_str(), nullptr);
         }
     );
+
+    // 后台线程：每 3 秒推送硬件占用（CPU/内存/硬盘）
+    // 首次 2 秒后额外推送一次设备信息，防止 NavigationCompleted 时 JS 未就绪
+    std::thread([wv = g_webview]() {
+        bool first = true;
+        while (true) {
+            Sleep(first ? 2000 : 3000);
+            if (first) {
+                // 保底：首次再推一次设备信息
+                std::string di = CollectDeviceInfoJSON();
+                int dlen = MultiByteToWideChar(CP_UTF8, 0, di.c_str(), -1, nullptr, 0);
+                std::wstring dw(dlen, 0);
+                MultiByteToWideChar(CP_UTF8, 0, di.c_str(), -1, &dw[0], dlen);
+                wv->ExecuteScript(dw.c_str(), nullptr);
+                first = false;
+            }
+            std::string jsStr = CollectDeviceUsageJSON();
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, jsStr.c_str(), -1, nullptr, 0);
+            std::wstring wjs(wlen, 0);
+            MultiByteToWideChar(CP_UTF8, 0, jsStr.c_str(), -1, &wjs[0], wlen);
+            wv->ExecuteScript(wjs.c_str(), nullptr);
+        }
+    }).detach();
 
     return S_OK;
 }

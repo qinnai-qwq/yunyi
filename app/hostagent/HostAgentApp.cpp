@@ -61,7 +61,7 @@ bool HostAgentApp::init(const AppConfig& cfg) {
         logFile = std::make_shared<std::ofstream>(
             logPath, std::ios::out | std::ios::app);
         if (logFile->is_open()) {
-            *logFile << "========== 云驿 房主端 v1.0.1 ==========\n"
+            *logFile << "========== 云驿 房主端 v1.1.0 ==========\n"
                      << "启动时间: " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "\n"
                      << "中继地址: " << cfg.publicIp << ":" << cfg.controlPort << "\n"
                      << "本地MC端口: " << _localMcPort
@@ -617,7 +617,7 @@ void HostAgentApp::registerHttpRoutes(httplib::Server& svr) {
         json resp = {
             {"status",  "ok"},
             {"role",    "host"},
-            {"version", "1.0.1"},
+            {"version", "1.1.0"},
             {"protocol", 1},
             {"relayIp",  _config.publicIp},
             {"controlPort", _config.controlPort},
@@ -637,7 +637,7 @@ void HostAgentApp::registerHttpRoutes(httplib::Server& svr) {
             {"controlPort",  _config.controlPort},
             {"httpPort",     _httpPort},
             {"localMcPort",  _localMcPort},
-            {"version",      "1.0.1"},
+            {"version",      "1.1.0"},
             {"protocolVersion", 1}
         };
         res.status = 200;
