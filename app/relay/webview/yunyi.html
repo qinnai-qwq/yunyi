@@ -177,17 +177,20 @@
             display: block;
             opacity: 1;
             transform: translateY(0);
+            pointer-events: auto;
         }
         .theme-row {
             display: flex; align-items: center; justify-content: space-between;
             padding: 12px 12px; border-radius: 8px;
             cursor: pointer; transition: background var(--t-fast);
+            pointer-events: auto;
         }
         .theme-row:hover { background: rgba(255,255,255,0.2); }
         .theme-label { font-size: 13px; font-weight: 600; color: var(--text); }
         .theme-val { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
         .theme-glass-opts {
             display: flex; gap: 4px; padding: 2px 10px 12px;
+            pointer-events: auto;
         }
         .theme-opt {
             flex: 1; padding: 7px 0; border-radius: 7px;
@@ -195,12 +198,14 @@
             font-family: var(--font-ui); font-size: 12px; font-weight: 600;
             color: var(--text-secondary); cursor: pointer;
             transition: all var(--t-fast) var(--ease-out);
+            pointer-events: auto;
         }
         .theme-opt:hover { background: rgba(255,255,255,0.25); }
         .theme-opt.active { background: var(--primary); color: #fff; border-color: var(--primary); }
         .theme-custom {
             display: flex; align-items: center; gap: 6px;
             padding: 0 10px 12px;
+            pointer-events: auto;
         }
         .theme-custom input {
             width: 64px; padding: 7px 8px; border-radius: 7px;
