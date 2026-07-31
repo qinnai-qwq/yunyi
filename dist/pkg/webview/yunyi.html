@@ -494,6 +494,62 @@
         .panel-head .view-sub { margin: 0 0 0 8px; }
         .panel-body { padding: 14px 18px; }
 
+        /* ===== Markdown Preview ===== */
+        .md-panel {
+            padding: 20px 24px;
+            font-size: 13.5px; line-height: 1.75;
+            color: var(--text);
+        }
+        .md-panel:hover { transform: none !important; box-shadow: none !important; }
+        .md-panel h1 {
+            font-size: 19px; font-weight: 700; margin: 4px 0 14px;
+            padding-bottom: 12px; border-bottom: 2px solid var(--border);
+        }
+        .md-panel h2 {
+            font-size: 15.5px; font-weight: 700; margin: 24px 0 10px;
+            padding-left: 10px; border-left: 3px solid var(--primary);
+        }
+        .md-panel h3 {
+            font-size: 13.5px; font-weight: 700; margin: 18px 0 8px;
+            color: var(--primary-dark);
+        }
+        .md-panel p { margin: 8px 0; }
+        .md-panel ul, .md-panel ol { margin: 8px 0 8px 22px; }
+        .md-panel li { margin: 4px 0; }
+        .md-panel li > ul { margin-top: 2px; }
+        .md-panel code {
+            font-family: var(--font-mono); font-size: 12px;
+            background: rgba(0,0,0,0.06); color: var(--primary-dark);
+            padding: 1.5px 5px; border-radius: 4px;
+        }
+        .md-panel blockquote {
+            border-left: 3px solid var(--primary);
+            padding: 4px 12px; margin: 10px 0;
+            font-size: 12.5px; color: var(--text-secondary);
+        }
+        .md-panel blockquote code { background: rgba(0,0,0,0.06); }
+        .md-panel hr { border: none; border-top: 1px dashed var(--border); margin: 18px 0; }
+        .md-panel strong { font-weight: 700; }
+
+        /* 代码块：允许选中 + 右上角复制按钮 */
+        .code-block { position: relative; margin: 12px 0; }
+        .code-block pre {
+            background: #F3EFE6; color: var(--text);
+            padding: 14px 14px; border-radius: 10px;
+            overflow-x: auto; margin: 0;
+            user-select: text; -webkit-user-select: text;
+        }
+        .code-block pre code { background: none; color: inherit; padding: 0; font-size: 12px; user-select: text; }
+        .copy-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: rgba(0,0,0,0.06); color: var(--text-secondary);
+            border: 1px solid rgba(0,0,0,0.12); border-radius: 6px;
+            font-size: 11px; padding: 3px 10px; cursor: pointer;
+            opacity: 1; transition: opacity .15s;
+        }
+        .copy-btn:hover { background: rgba(0,0,0,0.12); color: var(--text); }
+        .copy-btn:active { transform: scale(0.94); }
+
         /* ===== Role Cards (home quick actions) ===== */
         .role-split {
             display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
@@ -1110,7 +1166,7 @@
                     设置
                 </button>
             </div>
-            <div class="rail-version">v1.1.0</div>
+            <div class="rail-version">v1.1.1</div>
         </div>
 
         <!-- Content Area -->
@@ -1539,12 +1595,19 @@
             </div>
             <!-- ===== 问题解决 ===== -->
             <div class="view" id="view-troubleshoot">
-                <div class="wip-wrap">
-                    <div class="wip-card">
-                        <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        <div class="wip-title">功能正在开发</div>
-                        <div class="wip-sub">常见问题解决方案即将上线</div>
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">问题解决</div>
+                        <div class="view-sub">常见问题排查与解决</div>
                     </div>
+                    <div class="view-head-spacer"></div>
+                    <button class="btn btn-ghost" onclick="loadTroubleshoot(true)">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v5h5M20 20v-5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 10A8 8 0 004.7 16.1M4 14a8 8 0 0015.3 3.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        刷新
+                    </button>
+                </div>
+                <div class="scroll">
+                    <div class="panel md-panel" id="md-content">正在加载文档…</div>
                 </div>
             </div>
             <!-- ===== 更多 ===== -->
@@ -1749,7 +1812,7 @@
         heartbeatIntervalMs: 25000,
         roomGracePeriodMs: 45000,
         maxPlayersPerRoom: 10,
-        version: '1.1.0',
+        version: '1.1.1',
         protocolVersion: 1,
         tlsVersion: 'TLS 1.3'
     };
@@ -2228,6 +2291,8 @@
             syncAll().then(() => { renderHostPanel(); renderRoomGrid(); });
         } else if (name === 'relay') {
             syncAll().then(() => renderAll());
+        } else if (name === 'troubleshoot') {
+            loadTroubleshoot();
         } else {
             renderAll();
         }
@@ -2332,6 +2397,124 @@
         if (data.memory !== undefined) set('dev-memory-usage', data.memory + '%');
         if (data.disk !== undefined) set('dev-disk-usage', data.disk + '%');
     };
+
+    // ======================== Troubleshoot (Markdown) ========================
+    var mdLoaded = false;
+    // 轻量 Markdown 渲染器：支持标题/列表/引用/代码块/分隔线/粗体/行内代码
+    function renderMarkdown(md) {
+        function esc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function inline(s) {
+            s = esc(s);
+            s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+            return s;
+        }
+        var lines = md.split('\n');
+        var html = '';
+        var inCode = false, codeBuf = [], inUl = false, inOl = false;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (/^```/.test(line)) {
+                if (!inCode) {
+                    inCode = true; codeBuf = [];
+                } else {
+                    html += '<div class="code-block"><button class="copy-btn" onclick="copyCode(this)">复制</button><pre><code>' + codeBuf.join('\n') + '</code></pre></div>';
+                    inCode = false;
+                }
+                continue;
+            }
+            if (inCode) { codeBuf.push(esc(line)); continue; }
+            if (!line.trim()) {
+                if (inUl) { html += '</ul>'; inUl = false; }
+                if (inOl) { html += '</ol>'; inOl = false; }
+                continue;
+            }
+            var h = line.match(/^(#{1,6})\s+(.*)/);
+            if (h) {
+                if (inUl) { html += '</ul>'; inUl = false; }
+                if (inOl) { html += '</ol>'; inOl = false; }
+                html += '<h' + h[1].length + '>' + inline(h[2]) + '</h' + h[1].length + '>';
+                continue;
+            }
+            if (/^-{3,}$/.test(line.trim())) {
+                if (inUl) { html += '</ul>'; inUl = false; }
+                if (inOl) { html += '</ol>'; inOl = false; }
+                html += '<hr>';
+                continue;
+            }
+            if (/^>\s?/.test(line)) {
+                if (inUl) { html += '</ul>'; inUl = false; }
+                if (inOl) { html += '</ol>'; inOl = false; }
+                html += '<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>';
+                continue;
+            }
+            if (/^[-*]\s+/.test(line)) {
+                if (inOl) { html += '</ol>'; inOl = false; }
+                if (!inUl) { html += '<ul>'; inUl = true; }
+                html += '<li>' + inline(line.replace(/^[-*]\s+/, '')) + '</li>';
+                continue;
+            }
+            if (/^\d+\.\s+/.test(line)) {
+                if (inUl) { html += '</ul>'; inUl = false; }
+                if (!inOl) { html += '<ol>'; inOl = true; }
+                html += '<li>' + inline(line.replace(/^\d+\.\s+/, '')) + '</li>';
+                continue;
+            }
+            if (inUl) { html += '</ul>'; inUl = false; }
+            if (inOl) { html += '</ol>'; inOl = false; }
+            html += '<p>' + inline(line) + '</p>';
+        }
+        if (inCode) html += '<div class="code-block"><button class="copy-btn" onclick="copyCode(this)">复制</button><pre><code>' + codeBuf.join('\n') + '</code></pre></div>';
+        if (inUl) html += '</ul>';
+        if (inOl) html += '</ol>';
+        return html;
+    }
+
+    async function loadTroubleshoot(force) {
+        var container = document.getElementById('md-content');
+        if (!container) return;
+        if (mdLoaded && !force) return;
+        try {
+            var r = await fetch('/TROUBLESHOOTING.md');
+            if (!r.ok) throw new Error(r.status);
+            var text = await r.text();
+            container.innerHTML = renderMarkdown(text);
+            mdLoaded = true;
+        } catch (e) {
+            container.innerHTML = '<p style="color:var(--danger);">无法加载问题解决文档，请检查 webview/TROUBLESHOOTING.md 是否存在</p>';
+        }
+    }
+
+    // 复制代码块内容
+    function copyCode(btn) {
+        var pre = btn.parentElement.querySelector('pre');
+        if (!pre) return;
+        var text = pre.innerText || pre.textContent;
+        var done = function() {
+            btn.textContent = '已复制';
+            setTimeout(function() { btn.textContent = '复制'; }, 1200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(function() {
+                fallbackCopy(text, done);
+            });
+        } else {
+            fallbackCopy(text, done);
+        }
+    }
+    function fallbackCopy(text, done) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch(e) {}
+        document.body.removeChild(ta);
+        if (done) done();
+    }
 
     // ======================== Render ========================
     function renderAll() {
@@ -2727,6 +2910,16 @@
         });
     }
 
+    // 列表滚动区域：取消鼠标中键的自动滚动/点击行为，仅保留滚轮滑动
+    document.querySelectorAll('.scroll').forEach(function(el) {
+        el.addEventListener('mousedown', function(e) {
+            if (e.button === 1) e.preventDefault();
+        });
+        el.addEventListener('auxclick', function(e) {
+            if (e.button === 1) e.preventDefault();
+        });
+    });
+
     // ======================== Theme ========================
     let glassLevel = 'mid'; // low | mid | high | custom
     const GLASS_LEVELS = { low: 0.10, mid: 0.22, high: 0.38, custom: 0.22 };
@@ -2766,6 +2959,7 @@
             opts.style.display = 'none';
             document.documentElement.style.setProperty('--glass-opacity', GLASS_LEVELS[level]);
         }
+        saveTheme();
     }
 
     document.getElementById('glass-custom-val').addEventListener('input', function() {
@@ -2774,6 +2968,7 @@
             if (isNaN(gv3)) gv3 = 22;
             GLASS_LEVELS.custom = Math.max(0.05, Math.min(0.8, gv3 / 100));
             document.documentElement.style.setProperty('--glass-opacity', GLASS_LEVELS.custom);
+            saveTheme();
         }
     });
 
@@ -2809,6 +3004,7 @@
             opts.style.display = 'none';
             document.documentElement.style.setProperty('--bg-blur', BLUR_LEVELS[level] + 'px');
         }
+        saveTheme();
     }
 
     document.getElementById('blur-custom-val').addEventListener('input', function() {
@@ -2817,6 +3013,7 @@
             if (isNaN(bv2)) bv2 = 0;
             BLUR_LEVELS.custom = Math.max(0, Math.min(60, bv2));
             document.documentElement.style.setProperty('--bg-blur', BLUR_LEVELS.custom + 'px');
+            saveTheme();
         }
     });
 
@@ -2842,6 +3039,7 @@
             applyStoredBgColor();
             if (colorSec) colorSec.style.display = 'block';
         }
+        saveTheme();
     });
 
     // 背景颜色
@@ -2872,6 +3070,7 @@
         if (!bgImageOn) {
             document.body.style.background = level === 'custom' ? (bgColorCustom || '#FDF5E6') : BG_COLORS[level];
         }
+        saveTheme();
     }
     function toggleColorOptions() {
         var opts = document.getElementById('bg-color-opts');
@@ -2884,6 +3083,8 @@
         var v = this.value.trim();
         if (v && bgColorLevel === 'custom' && !bgImageOn) {
             document.body.style.background = v;
+            bgColorCustom = v;
+            saveTheme();
         }
     });
     // 颜色按钮点击
@@ -2912,6 +3113,73 @@
         if (!btn) return;
         applyGlassLevel(btn.dataset.level);
     });
+
+    // ======================== Theme Persistence ========================
+    var THEME_KEY = 'yunyi_theme_v1';
+    function saveTheme() {
+        try {
+            localStorage.setItem(THEME_KEY, JSON.stringify({
+                glass: glassLevel,
+                glassCustom: GLASS_LEVELS.custom,
+                blur: blurLevel,
+                blurCustom: BLUR_LEVELS.custom,
+                bgImage: bgImageOn,
+                bgColor: bgColorLevel,
+                bgColorCustom: bgColorCustom
+            }));
+        } catch(e) {}
+    }
+    function restoreTheme() {
+        try {
+            var saved = JSON.parse(localStorage.getItem(THEME_KEY) || 'null');
+            if (!saved) return;
+            // 透明度
+            if (saved.glass) {
+                if (saved.glass === 'custom' && saved.glassCustom) {
+                    GLASS_LEVELS.custom = saved.glassCustom;
+                    var gv = document.getElementById('glass-custom-val');
+                    if (gv) gv.value = Math.round(saved.glassCustom * 100);
+                }
+                applyGlassLevel(saved.glass);
+            }
+            // 模糊
+            if (saved.blur) {
+                if (saved.blur === 'custom' && saved.blurCustom) {
+                    BLUR_LEVELS.custom = saved.blurCustom;
+                    var bv = document.getElementById('blur-custom-val');
+                    if (bv) bv.value = saved.blurCustom;
+                }
+                applyBlurLevel(saved.blur);
+            }
+            // 背景图 / 背景色
+            if (saved.bgImage !== undefined) bgImageOn = saved.bgImage;
+            if (saved.bgColor) {
+                bgColorLevel = saved.bgColor;
+                bgColorCustom = saved.bgColorCustom || '#FDF5E6';
+                BG_COLORS.custom = bgColorCustom;
+                var cval = document.getElementById('bg-color-custom-val');
+                if (cval) cval.value = bgColorCustom;
+                document.getElementById('bg-color-text').textContent = BG_COLOR_LABELS[bgColorLevel];
+                document.querySelectorAll('#bg-color-opts .theme-opt').forEach(function(b) {
+                    b.classList.toggle('active', b.dataset.color === bgColorLevel);
+                });
+            }
+            var sw = document.getElementById('sw-bgimg');
+            var colorSec = document.getElementById('bg-color-section');
+            if (bgImageOn) {
+                if (sw) sw.classList.add('on');
+                document.body.style.removeProperty('background-image');
+                document.body.style.removeProperty('background-color');
+                if (colorSec) colorSec.style.display = 'none';
+            } else {
+                if (sw) sw.classList.remove('on');
+                document.body.style.background = 'none';
+                applyStoredBgColor();
+                if (colorSec) colorSec.style.display = 'block';
+            }
+        } catch(e) {}
+    }
+    restoreTheme();
 
     // ======================== Config Display ========================
     function updateConfigDisplay() {

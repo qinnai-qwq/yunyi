@@ -22,5 +22,8 @@ x64/
 # Logs
 logs/
 
+# App (不开源 — 软件安全 + 用户信息安全)
+app/
+
 # Release zip
 dist/*.zip

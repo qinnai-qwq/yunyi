@@ -1182,4 +1182,86 @@ setter 内部调用 `_director.setPublicIp(ip)`，保证连接码 IP 来源一�
 ```
 云驿.vcxproj  Release|x64  → 0 Error, 0 Warning ✅
 云驿GUI.vcxproj  Release|x64  → 0 Error, 0 Warning ✅
+
+---
+
+## 2026-07-31 — v1.1.0（界面重构 + 主题完善）
+
+### 新增功能
+
+- 侧边栏新增「教程」导航（设置上方）
+- Titlebar 新增「问题解决」按钮（主题左侧），点击跳转 WIP 占位页
+- 主题面板抽屉动画（max-height 过渡）
+- 背景色自定义选项（默认 #FDF5E6，支持 HEX/RGB 输入），仅背景图关闭时生效
+- 背景图开关
+- 重构绝大部分界面 UI
+- 主页移除快捷操作区，中继服务器 / 端口池卡片竖向排列
+- 中继模块 KPI 保持横向 4 列布局
+
+### 已修复
+
+| # | 问题 | 修复 |
+|---|------|------|
+| 47 | **WebView2 主题面板按钮无法点击** — backdrop-filter 吞鼠标事件 | 子元素加 `pointer-events:auto`，面板移除 backdrop-filter |
+| 48 | **内存显示不准** — GlobalMemoryStatusEx 受硬件保留内存影响 | 改用 GetPhysicallyInstalledSystemMemory + WMI Win32_PhysicalMemory 查询品牌/频率，品牌优先 Manufacturer，清洗冗余后缀，换行显示 品牌/容量/频率 |
+
+### 工程
+
+- 移除 `app/` 目录（不开源，软件安全 + 用户信息安全）
+- `.gitattributes` 排除 OpenSSL C 代码，纠正 GitHub 语言识别为 C++
+
+### 安装包
+
+`dist/云驿_v1.1.0.zip`
+
+---
+
+## 2026-08-01 — v1.1.1（设备信息卡片 + 问题解决文档 + 主题持久化）
+
+### 新增功能
+
+**1. 主页设备信息卡片**（stats 左侧）
+
+展示本机硬件配置 + 实时占用率（CPU / 内存 / 硬盘 %，每 3 秒推送刷新）：
+
+| 项目 | 采集方式 |
+|------|---------|
+| 处理器 | 注册表 ProcessorNameString，精简后缀（去 w/ Radeon Graphics、N-Core Processor、(R)/(TM)） |
+| 显卡 | EnumDisplayDevices，品牌/型号换行（如 NVIDIA GeForce / RTX 5060） |
+| 内存 | SMBIOS 解析：内存条品牌/型号 + 容量 + 频率，多根显示 `16GB*2 3200MHz` |
+| 主板 | 注册表 BIOS BaseBoardManufacturer + BaseBoardProduct |
+| 硬盘 | SetupDi 枚举物理磁盘型号，多盘换行显示 |
+| 操作系统 | 注册表 ProductName，Build ≥ 22000 → Windows 11 |
+
+**2. 问题解决文档 + WebUI 预览**
+
+- 新增 `TROUBLESHOOTING.md`（22 条常见问题：启动 / 网络 / 房间 / 设备信息 / 其他，附可复制 bash 命令）
+- HTTP 新增路由 `/TROUBLESHOOTING.md`
+- 右上角「问题解决」按钮打开预览页，内置轻量 markdown 渲染器（标题 / 列表 / 引用 / 代码块 / 粗体）
+- 代码块带复制按钮（底色 #F3EFE6，始终显示）
+
+**3. 主题持久化**
+
+透明度 / 模糊等级、自定义值、背景图开关、背景色 存入 localStorage，重启软件后自动恢复。
+
+**4. 鼠标交互**
+
+列表滚动区域取消鼠标中键的自动滚动 / 点击行为，仅保留滚轮滑动。
+
+### 移除
+
+- **网络检测卡片功能** — 点击「启动服务器」弹出的检测 modal、`start_net_check` 消息、`onCheckStep` / `onNetworkStatus` 回调全部移除，启动服务器改为直接启动
+
+### 已修复
+
+| # | 问题 | 修复 |
+|---|------|------|
+| 49 | **云驿.vcxproj 缺 `/std:c++17`** — string_view / range-for 无法编译 | 4 个配置加 `LanguageStandard: stdcpp17` |
+| 50 | **云驿.vcxproj 缺 `/utf-8`** — UTF-8 源码被按代码页 936(GBK) 解析，Config.cpp 的 `std::cerr` 解析崩溃 | 加 `/utf-8` 编译选项 |
+| 51 | **云驿.vcxproj 缺 include 目录** — `third_party/httplib/httplib.h` 找不到 | 加 `$(ProjectDir)` 到 AdditionalIncludeDirectories |
+| 52 | **Config.cpp 用 `std::string_view` 未 include** | 补 `#include <string_view>` |
+
+### 安装包
+
+`dist/云驿-v1.1.1.zip`（4.4MB，排除 logs/ 和 WebView2 运行时缓存）
 ```
