@@ -1,7 +1,0 @@
-{
-  "name": "x509cert-banned",
-  "version-date": "2022-04-19",
-  "description": "Deprecated C runtime functions",
-  "homepage": "https://github.com/x509cert/banned",
-  "license": "MIT"
-}
