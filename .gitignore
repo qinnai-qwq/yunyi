@@ -25,5 +25,8 @@ logs/
 # App (不开源 — 软件安全 + 用户信息安全)
 app/
 
+# Third-party deps (本地构建用，不入库)
+third_party/
+
 # Release zip
 dist/*.zip
