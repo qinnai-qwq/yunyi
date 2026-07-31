@@ -130,9 +130,15 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <PostBuildEvent>
       <Command>if not exist "$(OutDir)webview" mkdir "$(OutDir)webview"
-copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y</Command>
+copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y
+copy "$(ProjectDir)app\relay\webview\TROUBLESHOOTING.md" "$(OutDir)webview\TROUBLESHOOTING.md" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -145,9 +151,15 @@ copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <PostBuildEvent>
       <Command>if not exist "$(OutDir)webview" mkdir "$(OutDir)webview"
-copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y</Command>
+copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y
+copy "$(ProjectDir)app\relay\webview\TROUBLESHOOTING.md" "$(OutDir)webview\TROUBLESHOOTING.md" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -160,9 +172,15 @@ copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <PostBuildEvent>
       <Command>if not exist "$(OutDir)webview" mkdir "$(OutDir)webview"
-copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y</Command>
+copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y
+copy "$(ProjectDir)app\relay\webview\TROUBLESHOOTING.md" "$(OutDir)webview\TROUBLESHOOTING.md" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -175,9 +193,15 @@ copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <PostBuildEvent>
       <Command>if not exist "$(OutDir)webview" mkdir "$(OutDir)webview"
-copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y</Command>
+copy "$(ProjectDir)app\relay\webview\yunyi.html" "$(OutDir)webview\yunyi.html" /Y
+copy "$(ProjectDir)app\relay\webview\TROUBLESHOOTING.md" "$(OutDir)webview\TROUBLESHOOTING.md" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

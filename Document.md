@@ -1,7 +1,7 @@
-# 云驿（Yún Yì） v1.0.1 架构设计文档
+# 云驿（Yún Yì） v1.1.1 架构设计文档
 
 > 一个让没有公网 IP 的朋友，也能通过你的公网服务器加入 Minecraft 联机房间的中继工具。
-> 当前版本：**v1.0.1** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
+> 当前版本：**v1.1.1** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
 
 ---
 
@@ -110,7 +110,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 | 0x07 | DEREGISTER | 房主→中继 | 空 |
 | 0xFF | ERROR | 中继→房主 | 错误码(1字节) + 错误信息(变长字符串) |
 
-**数据隧道配对 (v1.0.1 双端口方案)**：每房间分配 **两个端口**——玩家端口（明文，连接码）和隧道端口（TLS-PSK）。房主收到含 `tunnelPort` 的 `OPEN_STREAM` 后，新开一条 TLS-PSK 连接连到隧道端口，握手后在隧道上发送 4 字节玩家连接编号，中继据此调用 `pairTunnel()` 配对。配对完成后双向纯字节转发。
+**数据隧道配对 (v1.1.1 双端口方案)**：每房间分配 **两个端口**——玩家端口（明文，连接码）和隧道端口（TLS-PSK）。房主收到含 `tunnelPort` 的 `OPEN_STREAM` 后，新开一条 TLS-PSK 连接连到隧道端口，握手后在隧道上发送 4 字节玩家连接编号，中继据此调用 `pairTunnel()` 配对。配对完成后双向纯字节转发。
 
 ---
 
@@ -246,9 +246,9 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ---
 
-## 6. 数据流（v1.0.1 双端口方案）
+## 6. 数据流（v1.1.1 双端口方案）
 
-### 6.1 完整流程（v1.0.1 统一事件流）
+### 6.1 完整流程（v1.1.1 统一事件流）
 
 **C端（房主通过 WebUI 创建房间）— 统一路径：**
 
@@ -283,7 +283,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ### 6.3 accept 线程安全（event queue）
 
-v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 segfault。v1.0.1 采用 **accept event queue** 架构：IOCP 回调仅将 accept 事件入队（mutex 保护），主循环 `onTick() → flushPendingSends() → processAcceptEvents()` 统一处理。
+v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 segfault。v1.1.1 采用 **accept event queue** 架构：IOCP 回调仅将 accept 事件入队（mutex 保护），主循环 `onTick() → flushPendingSends() → processAcceptEvents()` 统一处理。
 
 ### 6.4 TCP Keepalive（死连接检测）
 
@@ -303,10 +303,10 @@ v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 
 
 ```
 createRoomRelay() → DirectorImpl::rooms[id]
-                  → RoomRegistry.addRoom()   ← v1.0.1 激活
+                  → RoomRegistry.addRoom()   ← v1.1.1 激活
 
 HEARTBEAT 帧    → Director.touchRoomHeartbeat()
-                  → RoomRegistry.updateHeartbeat()  ← v1.0.1 激活
+                  → RoomRegistry.updateHeartbeat()  ← v1.1.1 激活
 
 onTick()        → checkStaleRooms()
                   → RoomRegistry.findTimeoutRooms()
@@ -331,7 +331,7 @@ onTick()        → checkStaleRooms()
 - [x] `Session`/`Ref` 生命周期实现 → Doxygen 注释已完成
 - [x] `ResourcePool<T>` 的取用/归还/池满处理 → Doxygen 注释已完成
 - [x] TLS-PSK 加密 → OpenSSL 3.x 已集成，TLS 1.3 握手已验证
-- [x] 双端口隧道架构 → v1.0.1 每房间 playerPort + tunnelPort
+- [x] 双端口隧道架构 → v1.1.1 每房间 playerPort + tunnelPort
 - [x] 心跳 + 断线重连 → ControlChannel 状态机已实现
 - [x] GUI 桌面客户端 → WebView2 无边框窗口
 - [x] 统一房间创建入口 → HostAgent WebUI 通过 ControlChannel REGISTER 创建
@@ -339,9 +339,9 @@ onTick()        → checkStaleRooms()
 - [x] TCP Keepalive → TransportCore::configureKeepalive 30s/10s
 - [x] 房主地址追踪 → RoomInfo::hostAddress
 - [x] 双角色 WebUI → relay/host 自适应
-- [ ] 房间宽限期具体时长（初定 45s）、触发条件细节
-- [ ] 中继服务器公网 IP 探测/配置方式（固定 IP vs 动态 IP）
-- [ ] 日志系统（分级、输出目标、HTTP API 暴露）
-- [ ] 端口池耗尽 UI 提示和重试引导
+- [x] 房间宽限期具体时长（45s）、触发条件细节
+- [x] 中继服务器公网 IP 探测/配置方式（自动检测 + WebUI POST /config 手动修改）
+- [x] 日志系统（分级、输出目标、HTTP API 暴露）
+- [x] 端口池耗尽 UI 提示和重试引导
 - [ ] tunnel accept TLS 握手偶发崩溃（当前 accept event queue 兜底）
 - [ ] 房主认领已有房间（ControlChannel registerRoom roomId 支持）

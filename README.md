@@ -3,7 +3,7 @@
 > Minecraft 联机中继工具 —— 让没有公网 IP 的朋友，通过有公网 IP 的中继服务器加入联机房间。
 > 玩家无需安装任何软件，直接把连接码粘贴到 MC 客户端的"直接连接"即可。
 
-**当前版本：v1.0.1**
+**当前版本：v1.1.1**
 
 ---
 
@@ -12,7 +12,7 @@
 ### 场景：房主没有公网 IP，朋友有公网 IP
 
 **1. 朋友（中继端）**
-- 下载 `云驿_v1.0.1_Release.zip`，解压
+- 下载 `云驿-v1.1.1.zip`，解压
 - 运行 `云驿GUI.exe`
 - 中继面板会显示公网 IPv6 地址（例如 `2408:826c:...`）
 - 把这个地址发给房主
@@ -79,7 +79,7 @@
 
 ### 技术栈
 
-- **语言：** C++20
+- **语言：** C++17
 - **网络：** Windows IOCP（AcceptEx / ConnectEx / WSARecv / WSASend）
 - **加密：** OpenSSL TLS-PSK（memory BIO 模式）
 - **HTTP：** cpp-httplib + nlohmann/json（header-only）
@@ -132,7 +132,7 @@
 ├── tools/                       测试工具
 ├── dist/                        分发目录
 │   ├── pkg/                     可部署文件
-│   └── 云驿_v1.0.1_Release.zip  发布包
+│   └── 云驿-v1.1.1.zip  发布包
 │
 ├── 云驿.vcxproj                 后端项目文件
 └── 云驿GUI.vcxproj              GUI 项目文件
@@ -148,15 +148,18 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/` | WebUI 页面 |
+| GET | `/TROUBLESHOOTING.md` | 问题解决文档（markdown 预览） |
 | GET | `/api/v1/ping` | 健康检查，返回 `{"role":"relay"}` |
 | GET | `/api/v1/stats` | 引擎统计（房间数、隧道数、端口池使用率） |
 | GET | `/api/v1/rooms` | 活跃房间列表 |
+| POST | `/api/v1/rooms` | 创建房间 `{"roomName":"mc","localMcPort":25565}` |
 | GET | `/api/v1/rooms/:id` | 单个房间详情 |
 | GET | `/api/v1/rooms/:id/players` | 房间内玩家列表 |
-| GET | `/api/v1/config` | 当前配置 |
-| GET | `/api/v1/logs` | 后端日志（轮询） |
-| POST | `/api/v1/public-ip` | 设置公网 IP `{"ip":"1.2.3.4"}` |
 | DELETE | `/api/v1/rooms/:id` | 强制关闭房间 |
+| GET | `/api/v1/config` | 当前配置 |
+| POST | `/api/v1/config` | 更新公网 IP `{"publicIp":"1.2.3.4"}` |
+| GET | `/api/v1/logs` | 后端日志（轮询） |
 
 ### 房主（8081）
 
@@ -196,7 +199,7 @@ MSBuild 云驿.vcxproj /p:Configuration=Release /p:Platform=x64
 MSBuild 云驿GUI.vcxproj /p:Configuration=Release /p:Platform=x64
 ```
 
-要求：Visual Studio 2022（v143），Windows SDK 10.0，C++20，OpenSSL 头文件和库放在 `third_party/openssl/`。
+要求：Visual Studio 2022（v143），Windows SDK 10.0，C++17，OpenSSL 头文件和库放在 `third_party/openssl/`。
 
 Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 - `libssl-4-x64.dll`、`libcrypto-4-x64.dll`（OpenSSL，在发布包中）
@@ -217,9 +220,12 @@ Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 - [x] 中继 + 房主双模式 GUI
 - [x] 房间心跳 + 超时清理
 - [x] 连接码生成（IPv6 地址格式）
+- [x] 流量统计 + WebUI 实时展示（转发流量、端口池占用）
+- [x] 多玩家同房间支持（上限 10 人）
+- [x] 主页设备信息卡片（硬件配置 + 实时占用率）
+- [x] 问题解决文档 + WebUI 预览（内置 markdown 渲染 + 命令复制）
+- [x] 主题自定义（透明度 / 模糊 / 背景图 / 背景色，持久化保存）
 - [ ] 玩家断线检测 + 自动清理
-- [ ] 流量统计 + WebUI 实时展示
-- [ ] 多玩家同房间支持
 - [ ] Linux epoll 后端（预留）
 
 ---
