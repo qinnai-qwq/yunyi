@@ -1,3 +1,2 @@
-# 排除第三方 C 库，避免语言识别被 OpenSSL / vcpkg 的 C 代码主导
-third_party/openssl/** linguist-vendored
-third_party/vcpkg_tmp/** linguist-vendored
+# 第三方依赖已不入库（third_party/ 在 .gitignore）
+# 语言识别基于 NetEngine(C++) + webview2-sdk 头文件 + 文档
