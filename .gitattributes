@@ -1,2 +1,3 @@
-# 排除第三方 C 库，避免语言识别被 OpenSSL 的 C 代码主导
+# 排除第三方 C 库，避免语言识别被 OpenSSL / vcpkg 的 C 代码主导
 third_party/openssl/** linguist-vendored
+third_party/vcpkg_tmp/** linguist-vendored
