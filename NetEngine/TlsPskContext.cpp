@@ -8,6 +8,7 @@
  *
  * 使用方式: 在项目预处理器定义中添加 YUNYI_HAS_OPENSSL 并链接 OpenSSL 库。
  */
+#include "Logger.h"
 #include "TlsPskContext.h"
 #include <cstring>
 #include <iostream>
@@ -219,8 +220,7 @@ TlsPskContext::HandshakeResult TlsPskContext::doHandshake(
     unsigned long sslErr = ERR_get_error();
     char errBuf[256]{};
     ERR_error_string_n(sslErr, errBuf, sizeof(errBuf));
-    std::cerr << "[TlsPskContext] handshake failed: "
-              << errBuf << std::endl;
+    CC_LOG(std::string("[TlsPskContext] handshake failed: ") + errBuf);
     return HandshakeResult::Failed;
 }
 
