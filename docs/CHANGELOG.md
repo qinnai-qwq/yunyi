@@ -1264,4 +1264,72 @@ setter 内部调用 `_director.setPublicIp(ip)`，保证连接码 IP 来源一�
 ### 安装包
 
 `dist/云驿-v1.1.1.zip`（4.4MB，排除 logs/ 和 WebView2 运行时缓存）
+
+---
+
+## 2026-08-01 — v1.2.0（NAT 打洞 — UDP 打洞 + P2P 直连）
+
+### 背景
+
+当前联机依赖"有公网 IP 的朋友做中继"，数据全走中继（延迟高、带宽瓶颈），且无公网中继朋友时无法联机。本版本实现 **UDP 打洞 P2P 直连**：两个无公网用户通过云驿后端协调互换公网候选端点，双方同时向对方 UDP 打洞，打通后 MC 流量直连、绕开中继。
+
+### 新增功能
+
+**1. TransportCore UDP 支持**
+- `IoOpType` 新增 `RecvFrom` / `SendTo`，`IoContext` 新增 `peerAddr`
+- 新增 `createUdpSocket` / `postRecvFrom` / `postSendTo`（WSARecvFrom/WSASendTo + IOCP）
+- `NetUtil::createUdpSocket`（SOCK_DGRAM，IPv6 双栈）
+
+**2. ReliableUdpChannel 可靠传输层**（`NetEngine/ReliableUdpChannel.h/.cpp`）
+- 对上层伪装成可靠字节流（仿 Session）：`send` / `setOnData` / `setOnClose`
+- 分片（≤1200B）、seq/ack、200ms 超时重传、接收乱序重组
+- 不做拥塞控制（家庭宽带够用）
+
+**3. STUN + 协调信令**
+- `app/component/StunClient.h/.cpp`：RFC 8489 子集，Binding 请求解析 XOR-MAPPED-ADDRESS
+- `FrameCodec` 新增 `HOLE_PUNCH` 帧（0x10 预留区）
+- **云驿后端**（独立项目）：新增 `StunServer`（UDP 3478 回显源地址）+ holepunch HTTP 端点（register / peers）
+
+**4. P2PTunnel 打洞核心**（`app/component/P2PTunnel.h/.cpp`）
+- 状态机：`Idle → Gathering(STUN) → Registering(上报) → Punching(双向打洞) → Connected / Failed`
+- 打通后 ReliableUdpChannel 直连，本地 MC TCP 双向转发（房主连 MC 服务器 / 玩家监听 MC 客户端）
+- 集成进 `HostAgentApp`：`POST /api/v1/p2p/start`、`POST /api/v1/p2p/stop`、`GET /api/v1/p2p/status`
+
+**5. GUI — view-p2p 页面**
+- 启用预埋的 P2P 导航页：房间码 + 角色（房主/玩家）+ 开始/停止
+- 实时显示打洞状态（获取候选 → 上报 → 打洞中 → 已直连/失败）与公网候选端点
+
+### 使用方式
+
+双方都运行云驿 → 侧边栏「P2P 直连」：
+1. 房主选"房主"，输入房间码（如 abc123），开始
+2. 玩家选"玩家"，输入相同房间码，开始
+3. 双方自动打洞直连（无中继）
+
+### 部署前提
+
+P2P 依赖云驿后端协调服务，需将新版后端部署到 mc.qinnai.xyz：
+- STUN UDP 服务（端口 3478）+ holepunch HTTP 端点（2885）
+- 后端编译产物在 `E:\Desktop\云驿后端\`
+
+### 已修复
+
+| # | 问题 | 修复 |
+|---|------|------|
+| 53 | **vcxproj 误入 GUI main.cpp** — app\gui\main.cpp 与 app\main.cpp 同名 obj 冲突，链接失败 | 移除误入的 ClCompile 项 + 清理残留 main.obj |
+| 54 | **FrameCodec.h ERROR 宏污染** — Windows 头文件 `#define ERROR 0` 破坏 `FrameType::ERROR`（HostAgentApp 引入 P2PTunnel.h 后暴露） | FrameCodec.h 顶部 `#undef ERROR` 自防护 |
+
+### 编译
+
+```
+云驿.vcxproj Release|x64 → 0 Error ✅
+云驿GUI.vcxproj Release|x64 → 0 Error ✅
+云驿后端.vcxproj Release|x64 → 0 Error ✅
+```
+
+### 待验证（需真实网络）
+
+- 两台 NAT 后机器（如手机热点模拟 CGNAT）走 P2P 页面联机，验证打洞直连
+- 打洞失败（对称 NAT）时前端提示"NAT 可能不支持"
+- 现有中继转发路径回归（P2P 为独立可选功能，不影响）
 ```

@@ -1,7 +1,7 @@
-# 云驿（Yún Yì） v1.1.1 架构设计文档
+# 云驿（Yún Yì） v1.2.0 架构设计文档
 
 > 一个让没有公网 IP 的朋友，也能通过你的公网服务器加入 Minecraft 联机房间的中继工具。
-> 当前版本：**v1.1.1** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
+> 当前版本：**v1.2.0** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
 
 ---
 
@@ -29,7 +29,8 @@
 
 - MC 服务端（房主的"对局域网开放"）只监听 `127.0.0.1:xxxxx`，**永远不直接暴露公网**
 - 公网上只暴露中继服务器的隧道端口，别人扫端口只能看到协议握手，看不出这是个 MC 服务器
-- 因为你（中继）有公网 IP，房主和玩家都是普通 NAT 出站连接，**完全不需要 P2P 打洞**
+- 中继模式下：因为中继有公网 IP，房主和玩家都是普通 NAT 出站连接，靠中继转发
+- **P2P 模式（v1.2.0 新增）**：双方都运行云驿客户端时，通过云驿后端协调互换公网候选端点，双向 UDP 打洞建立直连（ReliableUdpChannel 承载 MC 流量），绕开中继。打洞失败自动回退中继模式
 
 ### 3.2 加密方案
 
@@ -110,7 +111,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 | 0x07 | DEREGISTER | 房主→中继 | 空 |
 | 0xFF | ERROR | 中继→房主 | 错误码(1字节) + 错误信息(变长字符串) |
 
-**数据隧道配对 (v1.1.1 双端口方案)**：每房间分配 **两个端口**——玩家端口（明文，连接码）和隧道端口（TLS-PSK）。房主收到含 `tunnelPort` 的 `OPEN_STREAM` 后，新开一条 TLS-PSK 连接连到隧道端口，握手后在隧道上发送 4 字节玩家连接编号，中继据此调用 `pairTunnel()` 配对。配对完成后双向纯字节转发。
+**数据隧道配对 (v1.2.0 双端口方案)**：每房间分配 **两个端口**——玩家端口（明文，连接码）和隧道端口（TLS-PSK）。房主收到含 `tunnelPort` 的 `OPEN_STREAM` 后，新开一条 TLS-PSK 连接连到隧道端口，握手后在隧道上发送 4 字节玩家连接编号，中继据此调用 `pairTunnel()` 配对。配对完成后双向纯字节转发。
 
 ---
 
@@ -197,6 +198,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 │  ├─ FrameDispatcher.h/.cpp         按帧 type 注册/分发处理器
 │  ├─ TunnelManager.h/.cpp           数据隧道生命周期管理
 │  ├─ PortPool.h/.cpp                端口池自动分配/回收
+│  ├─ ReliableUdpChannel.h/.cpp     可靠 UDP 通道 (NAT 打洞数据面)
 │  ├─ NetUtil.h/.cpp                 双栈网络工具 (createSocket/fillAddr)
 │  ├─ ResourcePool.h                 高频对象复用池 (模板类, header-only)
 │  ├─ AutoreleasePool.h/.cpp         延迟释放池
@@ -208,7 +210,9 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 │  ├─ component/
 │  │  ├─ RoomRegistry.h/.cpp         房间注册表 + 超时检测 (中继用)
 │  │  ├─ ControlChannel.h/.cpp       控制连接状态机 + 心跳 + 重连
-│  │  └─ ConnectionCode.h/.cpp       连接码生成/解析 "IP:Port"
+│  │  ├─ ConnectionCode.h/.cpp       连接码生成/解析 "IP:Port"
+│  │  ├─ StunClient.h/.cpp           STUN 客户端 (获取公网映射)
+│  │  └─ P2PTunnel.h/.cpp            P2P 打洞隧道 (无中继直连)
 │  ├─ gui/
 │  │  └─ main.cpp                    Win32 + WebView2 无边框窗口宿主
 │  ├─ relay/
@@ -246,9 +250,9 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ---
 
-## 6. 数据流（v1.1.1 双端口方案）
+## 6. 数据流（v1.2.0 双端口方案）
 
-### 6.1 完整流程（v1.1.1 统一事件流）
+### 6.1 完整流程（v1.2.0 统一事件流）
 
 **C端（房主通过 WebUI 创建房间）— 统一路径：**
 
@@ -283,7 +287,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ### 6.3 accept 线程安全（event queue）
 
-v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 segfault。v1.1.1 采用 **accept event queue** 架构：IOCP 回调仅将 accept 事件入队（mutex 保护），主循环 `onTick() → flushPendingSends() → processAcceptEvents()` 统一处理。
+v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 segfault。v1.2.0 采用 **accept event queue** 架构：IOCP 回调仅将 accept 事件入队（mutex 保护），主循环 `onTick() → flushPendingSends() → processAcceptEvents()` 统一处理。
 
 ### 6.4 TCP Keepalive（死连接检测）
 
@@ -303,10 +307,10 @@ v0.3.x 的 IOCP accept 回调直接操作 `DirectorImpl`/`TransportCore` 导致 
 
 ```
 createRoomRelay() → DirectorImpl::rooms[id]
-                  → RoomRegistry.addRoom()   ← v1.1.1 激活
+                  → RoomRegistry.addRoom()   ← v1.2.0 激活
 
 HEARTBEAT 帧    → Director.touchRoomHeartbeat()
-                  → RoomRegistry.updateHeartbeat()  ← v1.1.1 激活
+                  → RoomRegistry.updateHeartbeat()  ← v1.2.0 激活
 
 onTick()        → checkStaleRooms()
                   → RoomRegistry.findTimeoutRooms()
@@ -314,6 +318,29 @@ onTick()        → checkStaleRooms()
 ```
 
 心跳超时阈值 = `roomGracePeriodMs`（默认 45s），超时后端口自动回收。
+
+### 6.6 P2P 直连（NAT 打洞，v1.2.0）
+
+两个无公网用户通过云驿后端协调互换候选端点后双向 UDP 打洞，打通后 MC 流量直连：
+
+```
+[房主云驿]                           [玩家云驿]
+MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdpChannel ──TCP──▶ MC客户端
+                  ▲                                       ▲
+                  └───── 云驿后端协调 ──────────────────────┘
+                  STUN(3478) 回显公网映射 + holepunch(2885) 互换候选
+```
+
+**关键组件**：
+- `TransportCore`：UDP socket（WSARecvFrom/WSASendTo + IOCP）
+- `ReliableUdpChannel`：可靠字节流（分片/seq/ack/重传），对上层伪装成 Session
+- `StunClient`：RFC 8489 子集，获取公网映射端点
+- `P2PTunnel`：状态机 `Idle → Gathering → Registering → Punching → Connected/Failed`，打通后转发本地 MC TCP
+- `HostAgentApp`：HTTP 端点 `/api/v1/p2p/{start,stop,status}`
+
+**协调**：云驿后端（mc.qinnai.xyz）STUN 回显 + `POST /api/v1/holepunch/register` 上报候选 + `GET /api/v1/holepunch/peers/{roomId}` 互换。
+
+**降级**：打洞失败（对称 NAT 等）自动回退中继 TCP 转发路径，不影响现有功能。
 
 ---
 
@@ -331,7 +358,7 @@ onTick()        → checkStaleRooms()
 - [x] `Session`/`Ref` 生命周期实现 → Doxygen 注释已完成
 - [x] `ResourcePool<T>` 的取用/归还/池满处理 → Doxygen 注释已完成
 - [x] TLS-PSK 加密 → OpenSSL 3.x 已集成，TLS 1.3 握手已验证
-- [x] 双端口隧道架构 → v1.1.1 每房间 playerPort + tunnelPort
+- [x] 双端口隧道架构 → v1.2.0 每房间 playerPort + tunnelPort
 - [x] 心跳 + 断线重连 → ControlChannel 状态机已实现
 - [x] GUI 桌面客户端 → WebView2 无边框窗口
 - [x] 统一房间创建入口 → HostAgent WebUI 通过 ControlChannel REGISTER 创建
@@ -343,5 +370,6 @@ onTick()        → checkStaleRooms()
 - [x] 中继服务器公网 IP 探测/配置方式（自动检测 + WebUI POST /config 手动修改）
 - [x] 日志系统（分级、输出目标、HTTP API 暴露）
 - [x] 端口池耗尽 UI 提示和重试引导
+- [x] NAT 打洞 P2P 直连 → UDP 打洞 + ReliableUdpChannel + 云驿后端协调
 - [ ] tunnel accept TLS 握手偶发崩溃（当前 accept event queue 兜底）
 - [ ] 房主认领已有房间（ControlChannel registerRoom roomId 支持）

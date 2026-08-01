@@ -84,11 +84,11 @@
     <ClCompile Include="app\relay\RelayApp.cpp">
       <Filter>app\relay</Filter>
     </ClCompile>
-    <ClCompile Include="app\gui\main.cpp">
-      <Filter>app\gui</Filter>
-    </ClCompile>
     <ClCompile Include="NetEngine\NetUtil.cpp">
       <Filter>NetEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="app\gui\main.cpp">
+      <Filter>app\gui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

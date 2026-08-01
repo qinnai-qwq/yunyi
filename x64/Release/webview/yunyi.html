@@ -1166,7 +1166,7 @@
                     设置
                 </button>
             </div>
-            <div class="rail-version">v1.1.0</div>
+            <div class="rail-version">v1.1.1</div>
         </div>
 
         <!-- Content Area -->
@@ -1565,11 +1565,48 @@
 
             <!-- ===== P2P ===== -->
             <div class="view" id="view-p2p">
-                <div class="wip-wrap">
-                    <div class="wip-card">
-                        <svg viewBox="0 0 24 24" fill="none" width="48" height="48"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        <div class="wip-title">功能正在开发</div>
-                        <div class="wip-sub">P2P 联机功能即将上线</div>
+                <div class="view-head">
+                    <div>
+                        <div class="view-title">P2P 直连</div>
+                        <div class="view-sub">无中继 NAT 打洞直连（房主与玩家需都运行云驿）</div>
+                    </div>
+                    <div class="view-head-spacer"></div>
+                    <button class="btn btn-ghost" onclick="p2pStop()">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M6 4l14 8-14 8V4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        停止
+                    </button>
+                </div>
+                <div class="scroll">
+                    <div class="panel">
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label>房间码</label>
+                                <input class="form-input" id="p2p-room-id" type="text" placeholder="双方输入一致，如 abc123" autocomplete="off" style="font-family:var(--font-ui);">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>角色</label>
+                                    <select class="form-select" id="p2p-role">
+                                        <option value="host">房主（转发到本地 MC 服务器）</option>
+                                        <option value="client">玩家（本机端口给 MC 客户端连）</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>本地 MC 端口</label>
+                                    <input class="form-input" id="p2p-mcport" type="text" value="25565">
+                                </div>
+                            </div>
+                            <div class="form-hint" style="margin-bottom:12px;">房主选择"房主"并开始后，玩家选"玩家"输入相同房间码并开始，双方自动打洞直连，无需中继。</div>
+                            <button class="btn btn-primary" onclick="p2pStart()">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                开始打洞直连
+                            </button>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-body" id="p2p-status">
+                            <div class="empty" style="padding:20px 12px;">未开始。房主先开始，玩家填相同房间码后开始，双方自动打洞直连。</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1812,7 +1849,7 @@
         heartbeatIntervalMs: 25000,
         roomGracePeriodMs: 45000,
         maxPlayersPerRoom: 10,
-        version: '1.1.0',
+        version: '1.1.1',
         protocolVersion: 1,
         tlsVersion: 'TLS 1.3'
     };
@@ -2305,6 +2342,58 @@
         document.getElementById('view-room-detail').classList.add('active');
         fetchRoomPlayers(roomId).then(() => renderRoomDetail(room));
         closeAllMenus();
+    }
+
+    // ======================== P2P 直连 ========================
+    // P2P 端点在本机房主进程（HTTP 8081）
+    const P2P_API = 'http://127.0.0.1:8081/api/v1';
+
+    async function p2pStart() {
+        var roomId = document.getElementById('p2p-room-id').value.trim();
+        if (!roomId) { showToast('请输入房间码'); return; }
+        var isHost = document.getElementById('p2p-role').value === 'host';
+        var mcPort = parseInt(document.getElementById('p2p-mcport').value) || 25565;
+        document.getElementById('p2p-status').innerHTML = '<div class="empty">正在启动打洞…</div>';
+        try {
+            var r = await fetch(P2P_API + '/p2p/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roomId: roomId, isHost: isHost, localIp: '127.0.0.1', localMcPort: mcPort })
+            });
+            var d = await r.json();
+            if (d.success) {
+                showToast('打洞已启动');
+                p2pPollStatus();
+            } else {
+                document.getElementById('p2p-status').innerHTML = '<div class="empty" style="color:var(--danger);">启动失败，请检查网络</div>';
+            }
+        } catch (e) {
+            document.getElementById('p2p-status').innerHTML = '<div class="empty" style="color:var(--danger);">无法连接本机 P2P 服务（8081），请确认云驿正在运行</div>';
+        }
+    }
+
+    async function p2pStop() {
+        try { await fetch(P2P_API + '/p2p/stop', { method: 'POST' }); } catch (e) {}
+        var box = document.getElementById('p2p-status');
+        if (box) box.innerHTML = '<div class="empty">已停止</div>';
+    }
+
+    async function p2pPollStatus() {
+        try {
+            var r = await fetch(P2P_API + '/p2p/status');
+            var d = await r.json();
+            var map = {
+                idle: '空闲', gathering: '获取公网候选…', registering: '上报协调服务器…',
+                punching: '打洞中…', connected: '✅ 已直连', failed: '❌ 打洞失败'
+            };
+            var html = '<div class="stat-item"><span class="label">状态</span><span class="value">' + (map[d.state] || d.state) + '</span></div>' +
+                       '<div class="stat-item"><span class="label">公网候选</span><span class="value">' + (d.candidateIp ? d.candidateIp + ':' + d.candidatePort : '-') + '</span></div>';
+            var box = document.getElementById('p2p-status');
+            if (box) box.innerHTML = html;
+            if (d.state === 'punching' || d.state === 'gathering' || d.state === 'registering') {
+                setTimeout(p2pPollStatus, 1000);
+            }
+        } catch (e) {}
     }
 
     // ======================== Menu / Toast ========================

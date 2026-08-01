@@ -52,6 +52,22 @@ using OnConnectCallback = std::function<void(SOCKET, int)>;
 using OnRecvCallback = std::function<void(SOCKET, const char*, size_t)>;
 
 /**
+ * @brief UDP 接收完成回调（带对端地址）
+ * @param sock 数据来源 socket
+ * @param data 数据指针（仅在回调期间有效）
+ * @param len 数据长度（字节）
+ * @param peer 对端地址（NAT 打洞场景是打洞成功后的公网映射端点）
+ */
+using OnRecvFromCallback = std::function<void(SOCKET, const char*, size_t, const sockaddr_storage&)>;
+
+/**
+ * @brief UDP 发送完成回调
+ * @param sock 目标 socket
+ * @param err 0 = 成功，非 0 = 失败错误码
+ */
+using OnSendToCallback = std::function<void(SOCKET, int)>;
+
+/**
  * @brief 发送完成回调
  * @param sock 目标 socket
  * @param err 0 = 成功，非 0 = 失败错误码
@@ -69,10 +85,12 @@ using OnCloseCallback = std::function<void(SOCKET, int)>;
  * @brief IOCP 异步操作类型
  */
 enum class IoOpType : uint8_t {
-    Accept,  /** AcceptEx 完成 */
-    Connect, /** ConnectEx 完成 */
-    Recv,    /** WSARecv 完成 */
-    Send     /** WSASend 完成 */
+    Accept,   /** AcceptEx 完成 */
+    Connect,  /** ConnectEx 完成 */
+    Recv,     /** WSARecv 完成 */
+    Send,     /** WSASend 完成 */
+    RecvFrom, /** WSARecvFrom 完成（UDP） */
+    SendTo    /** WSASendTo 完成（UDP） */
 };
 
 /**
@@ -94,6 +112,10 @@ struct IoContext {
     SOCKET socket = INVALID_SOCKET;
     /** AcceptEx 所属的监听 socket（仅 Accept 操作有效） */
     SOCKET listenSocket = INVALID_SOCKET;
+    /** UDP 对端地址（仅 RecvFrom/SendTo 操作有效） */
+    sockaddr_storage peerAddr{};
+    /** peerAddr 实际长度 */
+    int peerAddrLen = sizeof(sockaddr_storage);
     /** 实际传输字节数 */
     DWORD bytesTransferred = 0;
     /**
@@ -106,6 +128,8 @@ struct IoContext {
         wsaBuf.len = sizeof(buffer);
         socket = INVALID_SOCKET;
         listenSocket = INVALID_SOCKET;
+        peerAddr = {};
+        peerAddrLen = sizeof(sockaddr_storage);
         bytesTransferred = 0;
     }
 };
@@ -192,6 +216,35 @@ public:
      * @pre d 指向的内存必须在回调触发前保持有效
      */
     bool postSend(SOCKET s, const char* d, size_t len, OnSendCallback cb);
+
+    /**
+     * @brief 创建 UDP socket（SOCK_DGRAM，绑 IOCP）
+     * @param localPort 本地绑定端口，0 = 系统自动分配
+     * @param bindIp 绑定 IP，默认 "::"（IPv6 双栈）
+     * @return 有效 SOCKET，失败 INVALID_SOCKET
+     */
+    SOCKET createUdpSocket(uint16_t localPort = 0, const char* bindIp = "::");
+
+    /**
+     * @brief 投递异步 UDP 接收请求（WSARecvFrom）
+     * @param s UDP socket
+     * @param cb 接收完成回调（带对端地址）
+     * @return true 成功投递
+     * @note UDP 无连接，无"对端关闭"，recv 失败仅静默
+     */
+    bool postRecvFrom(SOCKET s, OnRecvFromCallback cb);
+
+    /**
+     * @brief 投递异步 UDP 发送请求（WSASendTo）
+     * @param s UDP socket
+     * @param d 数据指针
+     * @param len 数据长度
+     * @param peer 目标对端地址
+     * @param cb 发送完成回调
+     * @return true 成功投递
+     */
+    bool postSendTo(SOCKET s, const char* d, size_t len,
+                    const sockaddr_storage& peer, OnSendToCallback cb);
 
     /**
      * @brief 将已有 socket 绑定到 IOCP（同步 connect 后必须调用）
@@ -284,6 +337,8 @@ private:
         OnConnectCallback onConnect;
         OnRecvCallback onRecv;
         OnSendCallback onSend;
+        OnRecvFromCallback onRecvFrom;
+        OnSendToCallback onSendTo;
         OnCloseCallback onClose;
     };
     CB* getCallbacks(SOCKET s);

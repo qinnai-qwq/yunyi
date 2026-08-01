@@ -3,7 +3,7 @@
 > Minecraft 联机中继工具 —— 让没有公网 IP 的朋友，通过有公网 IP 的中继服务器加入联机房间。
 > 玩家无需安装任何软件，直接把连接码粘贴到 MC 客户端的"直接连接"即可。
 
-**当前版本：v1.1.1**
+**当前版本：v1.2.0**
 
 ---
 
@@ -67,6 +67,8 @@
 
 ## 架构
 
+### 中继模式（默认）
+
 ```
 玩家 (MC 客户端) ──TCP──▶ 中继服务器 ◀──TLS 控制信道──▶ 房主端 ◀──TCP──▶ 本地 MC 服务
        │                   │    (端口 40000)          │              (127.0.0.1:25565)
@@ -75,12 +77,25 @@
                              (端口 Y)
 ```
 
+### P2P 直连模式（NAT 打洞，无中继）
+
+```
+[房主云驿]                           [玩家云驿]
+MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdpChannel ──TCP──▶ MC客户端
+                  ▲                                        ▲
+                  └──── 云驿后端协调 (STUN + holepunch) ────┘
+                      mc.qinnai.xyz:3478(UD) + :2885(HTTP)
+```
+
+双方都运行云驿，通过「P2P 直连」页面互换公网候选端点后双向 UDP 打洞，打通后 MC 流量直连、绕开中继。打洞失败可回退中继模式。
+
 **核心约束：** 外部代码只允许调用 `Director`（引擎唯一门面），不可直接访问引擎内部模块。
 
 ### 技术栈
 
 - **语言：** C++17
-- **网络：** Windows IOCP（AcceptEx / ConnectEx / WSARecv / WSASend）
+- **网络：** Windows IOCP（AcceptEx / ConnectEx / WSARecv / WSASend）+ UDP（WSARecvFrom / WSASendTo）
+- **打洞：** STUN（RFC 8489 子集）+ ReliableUdpChannel（seq/ack/重传可靠 UDP）
 - **加密：** OpenSSL TLS-PSK（memory BIO 模式）
 - **HTTP：** cpp-httplib + nlohmann/json（header-only）
 - **GUI：** WebView2 原生窗口 + 单文件 SPA
@@ -101,6 +116,7 @@
 │   ├── FrameDispatcher.h/.cpp   帧分发器
 │   ├── TunnelManager.h/.cpp     数据隧道管理
 │   ├── PortPool.h/.cpp          端口池分配/回收
+│   ├── ReliableUdpChannel.h/.cpp 可靠 UDP 通道（NAT 打洞数据面）
 │   ├── Scheduler.h/.cpp         定时器（心跳/超时/重连退避）
 │   ├── Ref.h/.cpp               引用计数基类
 │   ├── AutoreleasePool.h/.cpp   自动释放池
@@ -115,11 +131,13 @@
 │   │   ├── HttpApiRouter.h/.cpp REST API 路由
 │   │   └── webview/yunyi.html   WebUI 单文件 SPA
 │   ├── hostagent/
-│   │   └── HostAgentApp.h/.cpp  房主端主程序
+│   │   └── HostAgentApp.h/.cpp  房主端主程序（含 P2P 直连端点）
 │   ├── component/
 │   │   ├── ControlChannel.h/.cpp 控制连接状态机
 │   │   ├── RoomRegistry.h/.cpp  房间注册表
-│   │   └── ConnectionCode.h/.cpp 连接码生成/解析
+│   │   ├── ConnectionCode.h/.cpp 连接码生成/解析
+│   │   ├── StunClient.h/.cpp    STUN 客户端（获取公网映射）
+│   │   └── P2PTunnel.h/.cpp     P2P 打洞隧道（无中继直连）
 │   └── gui/
 │       └── main.cpp             WebView2 原生窗口宿主
 │
@@ -172,6 +190,9 @@
 | POST | `/api/v1/rooms` | 在中继上创建房间 `{"roomName":"mc","localMcPort":25565}` |
 | GET | `/api/v1/rooms` | 本地房间列表 |
 | GET | `/api/v1/config` | 当前配置 |
+| POST | `/api/v1/p2p/start` | 启动 P2P 打洞直连 `{"roomId":"abc","isHost":true,"localMcPort":25565}` |
+| POST | `/api/v1/p2p/stop` | 停止 P2P 直连 |
+| GET | `/api/v1/p2p/status` | P2P 状态（idle/gathering/registering/punching/connected/failed） |
 
 ---
 
@@ -225,6 +246,8 @@ Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 - [x] 主页设备信息卡片（硬件配置 + 实时占用率）
 - [x] 问题解决文档 + WebUI 预览（内置 markdown 渲染 + 命令复制）
 - [x] 主题自定义（透明度 / 模糊 / 背景图 / 背景色，持久化保存）
+- [x] NAT 打洞 P2P 直连（UDP 打洞 + 可靠传输，无中继）
+- [x] P2P 协调服务（云驿后端 STUN + holepunch）
 - [ ] 玩家断线检测 + 自动清理
 - [ ] Linux epoll 后端（预留）
 

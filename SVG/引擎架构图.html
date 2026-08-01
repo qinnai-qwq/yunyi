@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<div class="title">云驿 项目结构 v1.1.1 (2026-07-26)</div>
+<div class="title">云驿 项目结构 v1.2.0 (2026-07-26)</div>
 <pre>
 <span class="solution">云驿GUI.vcxproj</span>                         <span class="comment">GUI 桌面客户端项目 (WebView2)</span>
 <span class="solution">云驿.vcxproj</span>                             <span class="comment">服务端项目 (Relay + HostAgent)</span>
@@ -35,6 +35,7 @@
 │  ├─ <span class="h">FrameDispatcher</span>.h/.cpp       <span class="comment">按帧 type 注册/分发处理器</span>
 │  ├─ <span class="h">TunnelManager</span>.h/.cpp         <span class="comment">隧道生命周期 + totalBytesRelayed()</span>
 │  ├─ <span class="h">PortPool</span>.h/.cpp              <span class="comment">端口池自动分配/回收</span>
+│  ├─ <span class="h">ReliableUdpChannel</span>.h/.cpp   <span class="comment">可靠 UDP 通道 (NAT 打洞数据面, seq/ack/重传)</span>
 │  ├─ <span class="h">NetUtil</span>.h/.cpp               <span class="comment">双栈网络工具 (createSocket/fillAddr)</span>
 │  ├─ <span class="h">ResourcePool</span>.h                     <span class="comment">高频对象复用池 (模板类, header-only)</span>
 │  ├─ <span class="h">AutoreleasePool</span>.h/.cpp        <span class="comment">延迟释放池</span>
@@ -47,7 +48,9 @@
 │  │  ├─ <span class="h">RoomRegistry</span>.h/.cpp        <span class="comment">房间注册表 + 超时检测 (心跳同步 ✓)</span>
 │  │  ├─ <span class="h">ControlChannel</span>.h/.cpp      <span class="comment">控制连接状态机 + 心跳 + 重连</span>
 │  │  │                               <span class="comment">  + registerRoomAsync() 异步等待 ACK</span>
-│  │  └─ <span class="h">ConnectionCode</span>.h/.cpp      <span class="comment">连接码生成/解析 "IP:Port"</span>
+│  │  ├─ <span class="h">ConnectionCode</span>.h/.cpp      <span class="comment">连接码生成/解析 "IP:Port"</span>
+│  │  ├─ <span class="h">StunClient</span>.h/.cpp          <span class="comment">STUN 客户端 (RFC 8489, 获取公网映射)</span>
+│  │  └─ <span class="h">P2PTunnel</span>.h/.cpp           <span class="comment">P2P 打洞隧道 (无中继直连 + ReliableUdpChannel)</span>
 │  ├─ <span class="folder">gui/</span>
 │  │  └─ <span class="cpp">main.cpp</span>                      <span class="comment">Win32 + WebView2 无边框窗口宿主</span>
 │  ├─ <span class="folder">relay/</span>
@@ -77,7 +80,7 @@
 │  ├─ protocol.md                              <span class="comment">控制帧协议规范</span>
 │  ├─ rest-api.md                              <span class="comment">REST API 手册 (含双角色 + 新字段)</span>
 │  ├─ director-api.md                          <span class="comment">Director 公开接口手册</span>
-│  └─ CHANGELOG.md                             <span class="comment">开发日志 (v1.1.1 架构修复)</span>
+│  └─ CHANGELOG.md                             <span class="comment">开发日志 (v1.2.0 架构修复)</span>
 │
 └─ <span class="folder">SVG/</span>                                 <span class="comment">蓝图 / 架构图</span>
    ├─ 引擎架构图.html                           <span class="comment">项目结构骨架 (当前文件)</span>
