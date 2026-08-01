@@ -378,6 +378,50 @@ GET /api/v1/ping
 
 ---
 
+### 2.9 P2P 直连端点（房主端 8081）
+
+无中继 NAT 打洞直连（双方都运行云驿，云驿后端协调）。房主端仅监听 `127.0.0.1`。
+
+**启动打洞直连** `POST /api/v1/p2p/start`：
+
+```json
+// 请求体
+{ "roomId": "abc123", "isHost": true, "localIp": "127.0.0.1", "localMcPort": 25565 }
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `roomId` | string | 房间码，双方需一致 |
+| `isHost` | bool | true = 房主（转发到本地 MC 服务器），false = 玩家 |
+| `localIp` | string | 本地 MC 地址（默认 127.0.0.1） |
+| `localMcPort` | uint16 | 本地 MC 端口（默认 25565） |
+
+**成功响应** `200 OK`：
+```json
+{ "success": true, "candidateIp": "2408:abcd::1", "candidatePort": 34782 }
+```
+
+**停止直连** `POST /api/v1/p2p/stop`：
+```json
+{ "success": true }
+```
+
+**查询状态** `GET /api/v1/p2p/status`：
+```json
+{ "state": "punching", "candidateIp": "2408:abcd::1", "candidatePort": 34782 }
+```
+
+| `state` 值 | 说明 |
+|-----------|------|
+| `idle` | 未开始 |
+| `gathering` | STUN 获取公网候选端点 |
+| `registering` | 上报候选到云驿后端 |
+| `punching` | 双向 UDP 打洞中 |
+| `connected` | 直连建立，数据流转 |
+| `failed` | 打洞失败（NAT 不支持或对端未加入） |
+
+---
+
 ### 2.8 错误码速查
 
 | code | HTTP | 说明 |

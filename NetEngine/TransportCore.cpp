@@ -160,6 +160,24 @@ void TransportCore::handleCompletion(IoContext* ctx, DWORD bt, int err) {
         }
         break;
     }
+
+    case IoOpType::RecvFrom: {
+        auto* cb = getCallbacks(ctx->socket);
+        if (cb && cb->onRecvFrom && err == 0 && bt > 0) {
+            cb->onRecvFrom(ctx->socket,
+                reinterpret_cast<const char*>(ctx->buffer), bt, ctx->peerAddr);
+        }
+        // UDP 无连接，接收失败静默（不触发 onClose）
+        break;
+    }
+
+    case IoOpType::SendTo: {
+        auto* cb = getCallbacks(ctx->socket);
+        if (cb && cb->onSendTo) {
+            cb->onSendTo(ctx->socket, err);
+        }
+        break;
+    }
     }
     s_ioCtxPool.release(ctx);
 }
@@ -418,6 +436,107 @@ bool TransportCore::postSend(
     DWORD sent = 0;
     int ret = WSASend(sock, &ctx->wsaBuf, 1,
         &sent, 0, &ctx->overlapped, nullptr);
+    if (ret == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING) {
+        s_ioCtxPool.release(ctx);
+        return false;
+    }
+    return true;
+}
+
+SOCKET TransportCore::createUdpSocket(uint16_t localPort, const char* bindIp) {
+    const char* ip = (bindIp && bindIp[0]) ? bindIp : "::";
+    SOCKET sock = NetUtil::createUdpSocket(ip);
+    if (sock == INVALID_SOCKET) return INVALID_SOCKET;
+
+    int opt = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+        reinterpret_cast<const char*>(&opt), sizeof(opt));
+
+    sockaddr_storage addr{};
+    int addrLen = sizeof(sockaddr_in);
+    if (NetUtil::isIPv6(ip)) {
+        auto* a6 = reinterpret_cast<sockaddr_in6*>(&addr);
+        a6->sin6_family = AF_INET6;
+        a6->sin6_port   = htons(localPort);
+        a6->sin6_addr   = in6addr_any;
+        addrLen = sizeof(sockaddr_in6);
+    } else {
+        auto* a4 = reinterpret_cast<sockaddr_in*>(&addr);
+        a4->sin_family = AF_INET;
+        a4->sin_port   = htons(localPort);
+        a4->sin_addr.s_addr = INADDR_ANY;
+    }
+    if (bind(sock, reinterpret_cast<sockaddr*>(&addr), addrLen)
+        == SOCKET_ERROR) {
+        closesocket(sock);
+        return INVALID_SOCKET;
+    }
+    if (!bindToIocp(sock)) {
+        closesocket(sock);
+        return INVALID_SOCKET;
+    }
+    return sock;
+}
+
+bool TransportCore::postRecvFrom(SOCKET sock, OnRecvFromCallback onRecv) {
+    if (sock == INVALID_SOCKET) return false;
+
+    CB cbs;
+    {
+        std::lock_guard<std::mutex> lock(_cbMutex);
+        auto it = _callbacks.find(sock);
+        if (it != _callbacks.end()) cbs = it->second;
+    }
+    cbs.onRecvFrom = std::move(onRecv);
+    setCallbacks(sock, cbs);
+
+    IoContext* ctx = s_ioCtxPool.acquire();
+    ctx->opType = IoOpType::RecvFrom;
+    ctx->socket = sock;
+    ctx->peerAddrLen = sizeof(ctx->peerAddr);
+
+    DWORD flags = 0;
+    int ret = WSARecvFrom(sock, &ctx->wsaBuf, 1, nullptr, &flags,
+        reinterpret_cast<sockaddr*>(&ctx->peerAddr), &ctx->peerAddrLen,
+        &ctx->overlapped, nullptr);
+    if (ret == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING) {
+        s_ioCtxPool.release(ctx);
+        return false;
+    }
+    return true;
+}
+
+bool TransportCore::postSendTo(SOCKET sock, const char* data, size_t len,
+    const sockaddr_storage& peer, OnSendToCallback onSend) {
+    if (sock == INVALID_SOCKET || !data || len == 0
+        || len > sizeof(IoContext::buffer)) {
+        return false;
+    }
+
+    CB cbs;
+    {
+        std::lock_guard<std::mutex> lock(_cbMutex);
+        auto it = _callbacks.find(sock);
+        if (it != _callbacks.end()) cbs = it->second;
+    }
+    cbs.onSendTo = std::move(onSend);
+    setCallbacks(sock, cbs);
+
+    IoContext* ctx = s_ioCtxPool.acquire();
+    ctx->opType = IoOpType::SendTo;
+    ctx->socket = sock;
+    memcpy(ctx->buffer, data, len);
+    ctx->wsaBuf.buf = reinterpret_cast<CHAR*>(ctx->buffer);
+    ctx->wsaBuf.len = static_cast<ULONG>(len);
+    ctx->peerAddr = peer;
+
+    int peerLen = (peer.ss_family == AF_INET6)
+        ? sizeof(sockaddr_in6) : sizeof(sockaddr_in);
+
+    DWORD sent = 0;
+    int ret = WSASendTo(sock, &ctx->wsaBuf, 1, &sent, 0,
+        reinterpret_cast<sockaddr*>(&ctx->peerAddr), peerLen,
+        &ctx->overlapped, nullptr);
     if (ret == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING) {
         s_ioCtxPool.release(ctx);
         return false;

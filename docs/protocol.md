@@ -169,7 +169,30 @@
 
 ---
 
-### 3.8 ERROR（0xFF）
+### 3.8 HOLE_PUNCH（0x10）— NAT 打洞候选端点互换
+
+| 属性 | 值 |
+|------|-----|
+| 方向 | 中继 ↔ 房主 / 中继 ↔ 玩家 |
+| 触发 | NAT 打洞协调时互换公网候选端点 |
+| 用途 | 把对端的公网映射 (IP:端口) 告知本方，双方据此同时向对方 UDP 打洞建立直连 |
+
+**payload**：
+```
+candidateIp(N bytes) + candidatePort(2 bytes, 大端) + playerConnId(4 bytes, 大端)
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `candidateIp` | string | 本方候选公网映射 IP（STUN 观察到的源地址） |
+| `candidatePort` | uint16 | 候选公网映射端口 |
+| `playerConnId` | uint32 | 关联的玩家连接 ID（房主侧匹配数据隧道用，无则 0） |
+
+> 走现有 TLS 控制通道加密传输。打洞成功后数据面切换为 P2P 直连（ReliableUdpChannel），不再经中继转发。
+
+---
+
+### 3.9 ERROR（0xFF）
 
 | 属性 | 值 |
 |------|-----|

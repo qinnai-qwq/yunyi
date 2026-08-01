@@ -30,6 +30,12 @@ struct NetUtil {
     static SOCKET createSocket(std::string_view ip = "");
 
     /**
+     * @brief 创建 UDP socket（SOCK_DGRAM），自动选择 AF_INET6/AF_INET
+     * @param ip 目标 IP（含 ":" = IPv6 双栈，否则 IPv4；空 = IPv4）
+     */
+    static SOCKET createUdpSocket(std::string_view ip = "");
+
+    /**
      * @brief 用 IP:Port 填充 sockaddr_storage，自动适配 IPv4/IPv6
      * @param ip   目标 IP 地址（文本格式）
      * @param port 目标端口（主机字节序）

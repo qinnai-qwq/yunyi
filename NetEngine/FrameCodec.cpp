@@ -134,6 +134,21 @@ std::vector<uint8_t> FrameCodec::encodeDeregister() {
     return out;
 }
 
+std::vector<uint8_t> FrameCodec::encodeHolePunch(const HolePunchPayload& p) {
+    // 负载: candidateIp(N) + candidatePort(2) + playerConnId(4)
+    uint32_t payloadLen = static_cast<uint32_t>(p.candidateIp.size()) + 2 + 4;
+    std::vector<uint8_t> out;
+    writeHeader(out, FrameType::HOLE_PUNCH, payloadLen);
+    out.insert(out.end(),
+        reinterpret_cast<const uint8_t*>(p.candidateIp.data()),
+        reinterpret_cast<const uint8_t*>(p.candidateIp.data()) + p.candidateIp.size());
+    uint8_t buf[6];
+    writeU16(buf, p.candidatePort);
+    writeU32(buf + 2, p.playerConnId);
+    out.insert(out.end(), buf, buf + 6);
+    return out;
+}
+
 std::vector<uint8_t> FrameCodec::encodeError(ErrorCode code, std::string_view message) {
     // 负载: errorCode(1) + message(N bytes)
     uint32_t payloadLen = 1 + static_cast<uint32_t>(message.size());
@@ -195,6 +210,16 @@ StreamBindPayload FrameCodec::decodeStreamBindPayload(const uint8_t* data, uint3
     StreamBindPayload p;
     if (len < 4) return p;
     p.playerConnId = readU32(data);
+    return p;
+}
+
+HolePunchPayload FrameCodec::decodeHolePunchPayload(const uint8_t* data, uint32_t len) {
+    HolePunchPayload p;
+    if (len < 6) return p;  // 最少: 2(port) + 4(playerConnId)
+    // 前 len-6 字节为候选 IP，然后是 2 字节端口 + 4 字节 playerConnId
+    p.candidateIp.assign(reinterpret_cast<const char*>(data), len - 6);
+    p.candidatePort = readU16(data + len - 6);
+    p.playerConnId  = readU32(data + len - 2);
     return p;
 }
 

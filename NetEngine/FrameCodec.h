@@ -13,6 +13,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+// Windows 头文件将 ERROR 定义为 0，会破坏 FrameType::ERROR，需先解除
+#ifdef ERROR
+#undef ERROR
+#endif
 namespace yunyi {
 namespace protocol {
 
@@ -49,6 +53,8 @@ enum class FrameType : uint8_t {
     STREAM_BIND = 0x06,
     /** 注销房间 */
     DEREGISTER = 0x07,
+    /** NAT 打洞候选端点互换（中继协调直连） */
+    HOLE_PUNCH = 0x10,
     /** 错误通知 */
     ERROR = 0xFF
 };
@@ -173,6 +179,22 @@ struct StreamBindPayload {
 };
 
 /**
+ * @brief HOLE_PUNCH 帧负载（NAT 打洞候选端点互换）
+ *
+ * 中继协调模式：中继把房主候选端点发给玩家、把玩家候选端点发给房主，
+ * 双方据此同时向对方公网映射端点发 UDP 打洞包建立直连。
+ * 负载: candidateIp(N) + candidatePort(2) + playerConnId(4)
+ */
+struct HolePunchPayload {
+    /** 候选公网映射 IP（STUN 观察到的源地址） */
+    std::string candidateIp;
+    /** 候选公网映射端口 */
+    uint16_t candidatePort = 0;
+    /** 关联的玩家连接 ID（房主侧匹配数据隧道用，无则 0） */
+    uint32_t playerConnId = 0;
+};
+
+/**
  * @class FrameCodec
  * @brief 控制帧编解码器（纯静态方法）
  *
@@ -232,6 +254,13 @@ public:
     static std::vector<uint8_t> encodeDeregister();
 
     /**
+     * @brief 编码 HOLE_PUNCH 帧（NAT 打洞候选端点互换）
+     * @param p 打洞负载
+     * @return 完整帧字节
+     */
+    static std::vector<uint8_t> encodeHolePunch(const HolePunchPayload& p);
+
+    /**
      * @brief 编码 ERROR 帧
      * @param code 错误码
      * @param msg 错误描述
@@ -283,6 +312,14 @@ public:
      * @return StreamBindPayload
      */
     static StreamBindPayload decodeStreamBindPayload(const uint8_t* d, uint32_t len);
+
+    /**
+     * @brief 解码 HOLE_PUNCH 帧负载
+     * @param d 负载数据指针
+     * @param len 负载长度
+     * @return HolePunchPayload
+     */
+    static HolePunchPayload decodeHolePunchPayload(const uint8_t* d, uint32_t len);
 
     /**
      * @brief 解码 ERROR 帧负载

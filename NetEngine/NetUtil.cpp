@@ -27,6 +27,20 @@ SOCKET NetUtil::createSocket(std::string_view ip) {
     return sock;
 }
 
+SOCKET NetUtil::createUdpSocket(std::string_view ip) {
+    int family = isIPv6(ip) ? AF_INET6 : AF_INET;
+    SOCKET sock = socket(family, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock == INVALID_SOCKET) return INVALID_SOCKET;
+
+    // IPv6 设置双栈模式（NAT 打洞需要接收 IPv4-mapped 对端）
+    if (family == AF_INET6) {
+        int opt = 0;
+        setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
+            reinterpret_cast<const char*>(&opt), sizeof(opt));
+    }
+    return sock;
+}
+
 int NetUtil::fillAddr(const char* ip, uint16_t port, sockaddr_storage& out) {
     std::memset(&out, 0, sizeof(out));
 
