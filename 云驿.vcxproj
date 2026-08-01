@@ -59,6 +59,7 @@
     <ClInclude Include="NetEngine\Director.h" />
     <ClInclude Include="NetEngine\FrameCodec.h" />
     <ClInclude Include="NetEngine\FrameDispatcher.h" />
+    <ClInclude Include="NetEngine\Logger.h" />
     <ClInclude Include="NetEngine\NetEngine_H.h" />
     <ClInclude Include="NetEngine\NetUtil.h" />
     <ClInclude Include="NetEngine\PortPool.h" />

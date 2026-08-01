@@ -2,6 +2,7 @@
  * @file PortPool.cpp
  * @brief 端口池实现 —— 线性扫描分配 / 回收
  */
+#include "Logger.h"
 #include "PortPool.h"
 #include <iostream>
 
@@ -14,9 +15,7 @@ PortPool::PortPool(uint16_t rangeStart, uint16_t rangeEnd)
           ? static_cast<size_t>(rangeEnd - rangeStart + 1) : 0)
 {
     if (rangeEnd < rangeStart) {
-        std::cerr << "[PortPool] WARNING: rangeEnd (" << rangeEnd
-                  << ") < rangeStart (" << rangeStart
-                  << "), pool will be empty!" << std::endl;
+        CC_LOG(std::string("[PortPool] WARNING: rangeEnd (") + std::to_string(rangeEnd) + ") < rangeStart (" + std::to_string(rangeStart) + "), pool will be empty!");
     }
 }
 

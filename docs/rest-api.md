@@ -1,4 +1,4 @@
-# 云驿 REST API 手册 v1.1.1
+# 云驿 REST API 手册 v1.2.0
 
 > 本文档定义中继服务器（RelayServer）对 webview 前端暴露的 HTTP/JSON 接口。
 > 所有接口均以 `/api/v1/` 为前缀，便于未来版本并存过渡。
@@ -286,7 +286,7 @@ GET /api/v1/stats
   "portPoolUsed": 3,
   "portPoolTotal": 1001,
   "bytesRelayed": 1234567890,
-  "version": "v1.1.1",
+  "version": "v1.2.0",
   "protocolVersion": 1
 }
 ```
@@ -362,7 +362,7 @@ GET /api/v1/ping
 {
   "status": "ok",
   "role": "relay",
-  "version": "v1.1.1",
+  "version": "v1.2.0",
   "protocol": 1,
   "serverIp": "1.2.3.4",
   "serverTime": "2026-07-17T12:00:00Z"

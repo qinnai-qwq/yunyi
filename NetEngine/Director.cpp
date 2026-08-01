@@ -7,6 +7,7 @@
 #include "AutoreleasePool.h"
 #include "FrameCodec.h"
 #include "FrameDispatcher.h"
+#include "Logger.h"
 #include "NetUtil.h"
 #include "PortPool.h"
 #include "Ref.h"
@@ -919,11 +920,11 @@ void Director::flushPendingSends() {
                     onTunnelAccepted(this, &d, ev.roomId, ev.clientSock, ev.addr);
                 }
             } catch (const std::exception& e) {
-                std::cerr << "[Director] CRASH in accept handler: " << e.what() << std::endl;
+                CC_LOG(std::string("[Director] CRASH in accept handler: ") + e.what());
                 addLog("接受连接时崩溃: " + std::string(e.what()));
                 d.transport->closeSocket(ev.clientSock, nullptr);
             } catch (...) {
-                std::cerr << "[Director] CRASH in accept handler (unknown)" << std::endl;
+                CC_LOG("[Director] CRASH in accept handler (unknown)");
                 addLog("接受连接时崩溃: unknown exception");
                 d.transport->closeSocket(ev.clientSock, nullptr);
             }
@@ -947,7 +948,7 @@ void Director::setPublicIp(const std::string& ip) {
     auto& d = _impl();
     std::string oldIp = d.publicIp;
     d.publicIp = ip;
-    std::cout << "[Director] Public IP updated: " << oldIp << " -> " << ip << std::endl;
+    CC_LOG("[Director] Public IP updated: " + oldIp + " -> " + ip);
     addLog("公网IP已更新: " + oldIp + " -> " + ip);
 }
 
@@ -1007,11 +1008,11 @@ static void onControlAccepted(Director* director, DirectorImpl* dimpl, SOCKET cl
                                const sockaddr_storage& addr) {
     std::string peer = TransportCore::addrToString(addr) + ":"
         + std::to_string(TransportCore::addrToPort(addr));
-    std::cout << "[Director] Control connection accepted from " << peer << std::endl;
+    CC_LOG("[Director] Control connection accepted from " + peer);
     director->addLog("控制连接接入: " + peer);
     auto tls = std::make_unique<TlsPskContext>();
     if (!tls->init(dimpl->tlsCfg.psk, dimpl->tlsCfg.pskIdentity, TlsRole::Server)) {
-        std::cerr << "[Director] TLS server init failed for " << peer << std::endl;
+        CC_LOG(std::string("[Director] TLS server init failed for ") + peer);
         dimpl->transport->closeSocket(clientSock, nullptr);
         return;
     }
@@ -1046,9 +1047,9 @@ static void onControlAccepted(Director* director, DirectorImpl* dimpl, SOCKET cl
 
             if (result == TlsPskContext::HandshakeResult::Done) {
                 *handshakeDone = true;
-                std::cout << "[Director] TLS handshake done" << std::endl;
+                CC_LOG("[Director] TLS handshake done");
             } else if (result == TlsPskContext::HandshakeResult::Failed) {
-                std::cerr << "[Director] TLS handshake failed" << std::endl;
+                CC_LOG("[Director] TLS handshake failed");
                 session->close();
             }
             return;
@@ -1121,8 +1122,7 @@ static void onControlAccepted(Director* director, DirectorImpl* dimpl, SOCKET cl
         std::lock_guard<std::mutex> lock(dimpl->roomsMutex);
         for (auto& kv : dimpl->rooms) {
             if (kv.second.controlSession == session) {
-                std::cout << "[Director] Host disconnected from room "
-                          << kv.second.roomId << std::endl;
+                CC_LOG("[Director] Host disconnected from room " + std::to_string(kv.second.roomId));
                 kv.second.hostConnected = false;
                 kv.second.controlSession = nullptr;
                 kv.second.hostTls.reset();
@@ -1138,8 +1138,7 @@ static void onPlayerAccepted(Director* director, DirectorImpl* dimpl, uint32_t r
                                SOCKET clientSock, const sockaddr_storage& addr) {
     std::string peer = TransportCore::addrToString(addr) + ":"
         + std::to_string(TransportCore::addrToPort(addr));
-    std::cout << "[Director] Player connection accepted for room #"
-              << roomId << " from " << peer << std::endl;
+    CC_LOG(std::string("[Director] Player connection accepted for room #") + std::to_string(roomId) + " from " + peer);
 
     if (director) director->addLog("玩家连接: #" + std::to_string(roomId) + " " + peer);
 
@@ -1163,8 +1162,7 @@ static void onPlayerAccepted(Director* director, DirectorImpl* dimpl, uint32_t r
 
     // 检查房主是否在线
     if (!hostConnected || !controlSession) {
-        std::cerr << "[Director] Room #" << roomId
-                  << " has no host, rejecting player" << std::endl;
+        CC_LOG(std::string("[Director] Room #") + std::to_string(roomId) + " has no host, rejecting player");
         dimpl->transport->closeSocket(clientSock, nullptr);
         return;
     }
@@ -1240,8 +1238,7 @@ static void onPlayerAccepted(Director* director, DirectorImpl* dimpl, uint32_t r
         }
     }
 
-    std::cout << "[Director] Player #" << playerConnId
-              << " attached to room #" << roomId << std::endl;
+    CC_LOG(std::string("[Director] Player #") + std::to_string(playerConnId) + " attached to room #" + std::to_string(roomId));
 }
 
 static void onTunnelAccepted(Director* director, DirectorImpl* dimpl,
@@ -1249,15 +1246,14 @@ static void onTunnelAccepted(Director* director, DirectorImpl* dimpl,
                              const sockaddr_storage& addr) {
     std::string peer = TransportCore::addrToString(addr) + ":"
         + std::to_string(TransportCore::addrToPort(addr));
-    std::cout << "[Director] Tunnel connection accepted for room #"
-              << roomId << " from " << peer << std::endl << std::flush;
+    CC_LOG(std::string("[Director] Tunnel connection accepted for room #") + std::to_string(roomId) + " from " + peer);
 
     if (director) director->addLog("隧道连接: #" + std::to_string(roomId) + " " + peer);
 
     // 创建 TLS 服务端上下文
     auto tls = std::make_unique<TlsPskContext>();
     if (!tls->init(dimpl->tlsCfg.psk, dimpl->tlsCfg.pskIdentity, TlsRole::Server)) {
-        std::cerr << "[Director] TLS server init failed for tunnel" << std::endl;
+        CC_LOG("[Director] TLS server init failed for tunnel");
         dimpl->transport->closeSocket(clientSock, nullptr);
         return;
     }
@@ -1294,11 +1290,10 @@ static void onTunnelAccepted(Director* director, DirectorImpl* dimpl,
 
             if (result == TlsPskContext::HandshakeResult::Done) {
                 *handshakeDone = true;
-                std::cout << "[Director] Tunnel TLS handshake done, waiting for playerConnId..."
-                          << std::endl;
+                CC_LOG("[Director] Tunnel TLS handshake done, waiting for playerConnId...");
                 if (director) director->addLog("TUN_HS_DONE");
             } else if (result == TlsPskContext::HandshakeResult::Failed) {
-                std::cerr << "[Director] Tunnel TLS handshake failed" << std::endl;
+                CC_LOG("[Director] Tunnel TLS handshake failed");
                 tunnelSession->close();
             }
             return;
@@ -1327,8 +1322,7 @@ static void onTunnelAccepted(Director* director, DirectorImpl* dimpl,
                 *pairedConnId = pid;
                 *connIdDone = true;
 
-                std::cout << "[Director] Tunnel identified: playerConnId="
-                          << pid << ", pairing..." << std::endl;
+                CC_LOG(std::string("[Director] Tunnel identified: playerConnId=") + std::to_string(pid) + ", pairing...");
 
                 // 配对隧道
                 if (dimpl->tunnelMgr) {
@@ -1351,7 +1345,7 @@ static void onTunnelAccepted(Director* director, DirectorImpl* dimpl,
                         }
                         t->pendingPlayerData.clear();
                     }
-                    std::cout << "[Director] Tunnel paired: " << pid << std::endl;
+                    CC_LOG("[Director] Tunnel paired: " + std::to_string(pid));
                 }
 
                 // 剩余数据（MC 握手等）转发给玩家
