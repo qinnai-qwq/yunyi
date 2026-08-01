@@ -28,5 +28,6 @@ app/
 # Third-party deps (本地构建用，不入库)
 third_party/
 
-# Release zip
-dist/*.zip
+# Build output: dist 构建产物不入库（发行版 zip 除外，供下载）
+dist/*
+!dist/*.zip
