@@ -37,6 +37,7 @@ PUBLIC_PATHS=(
   "docs"
   "icon.ico"
   "resource.rc"
+  "sync_public.sh"
   "云驿.slnx"
   "云驿.vcxproj"
   "云驿.vcxproj.filters"
@@ -54,6 +55,8 @@ done
 echo "[3/4] 提交并推送 qinnai-qwq..."
 git add -A
 git commit -m "sync: 同步 master 开源部分到 public" 2>/dev/null || echo "  无变更，跳过提交"
+# 先 fetch release 更新 --force-with-lease 的基准（上次推送后远程可能已变）
+git fetch release 2>/dev/null || true
 git push --force-with-lease "$PUSH_URL" public:master
 
 echo "[4/4] 切回 master..."
