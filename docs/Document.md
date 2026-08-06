@@ -1,7 +1,7 @@
-# 云驿（Yún Yì） v1.2.0 架构设计文档
+# 云驿（Yún Yì） v1.2.1 架构设计文档
 
 > 一个让没有公网 IP 的朋友，也能通过你的公网服务器加入 Minecraft 联机房间的中继工具。
-> 当前版本：**v1.2.0** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
+> 当前版本：**v1.2.1** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
 
 ---
 

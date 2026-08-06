@@ -17,6 +17,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -28,7 +29,7 @@
 namespace yunyi {
 class TransportCore;
 
-class ReliableUdpChannel {
+class ReliableUdpChannel : public std::enable_shared_from_this<ReliableUdpChannel> {
 public:
     using OnDataCallback  = std::function<void(const char*, size_t)>;
     using OnCloseCallback = std::function<void(int)>;
@@ -79,7 +80,8 @@ private:
     void handleAck(uint32_t seq);             // 处理 ACK
     void handleData(uint32_t seq, const char* data, size_t len);
     void retransmitLoop();                    // 重传线程
-    void doClose(int err);                    // 触发 onClose + 清理
+    void doClose(int err);                    // 触发 onClose + 清理（外部线程调用，会 join 重传线程）
+    void finishFromRetransmitThread(int err); // 仅供 retransmitLoop 内部收尾：不 join 自己
 
     static std::string pack(uint8_t flags, uint32_t seq, const char* payload, size_t len);
     static void unpack(const char* data, size_t len, uint8_t& flags,

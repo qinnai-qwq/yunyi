@@ -1333,3 +1333,226 @@ P2P 依赖云驿后端协调服务，需将新版后端部署到 mc.qinnai.xyz�
 - 打洞失败（对称 NAT）时前端提示"NAT 可能不支持"
 - 现有中继转发路径回归（P2P 为独立可选功能，不影响）
 ```
+---
+
+## 2026-08-06 — v1.2.1 GUI 修复（服务器启停 + 房间卡片状态 + IP 编辑）
+
+> 围绕「停止服务器」「创建房间自动填 IP」「房间卡片断开状态」三类问题，修复若干 API 绑定缺失与 UI 状态不刷新 bug。
+
+---
+
+### 已发现并修复的问题
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| 55 | **「停止服务器」按钮未绑定后端 API** — `shutdownRelay()` 只改前端 `relayRunning` 标志，relay 进程没停、host 控制连接没断，`/host/status` 仍返回 `connected:true`，房间卡片一直显示「已连接」 | 🔴 严重 | 改为调用 `POST /host/disconnect` 真正断开 host 连接，并标记房间为 `disconnected` |
+| 56 | **IP 地址卡片三面板冗余** — display（只读）/setup（保存并启动）/edit（保存+取消）三个面板切换，默认只读需点「修改地址」才能改，体验繁琐 | 🟡 中 | 合并为一个可编辑表单：未运行直接可编辑、回车自动保存，运行中只读并提示需先停服务器；移除保存/取消/修改地址按钮 |
+| 57 | **创建房间 IP 自动填入条件错误** — 原来用 `HOST_STATE.connected` 判断，与「中继模块是否启动服务器」脱节 | 🟡 中 | 改为按 `relayRunning` 判断：中继模块点过「启动服务器」才自动填 `CONFIG.publicIp`，否则留空手动填 |
+| 58 | **关闭服务器后房间卡片被清空** — `shutdownRelay()` 已标记房间 `disconnected`，但 `fetchRooms()` 随后用后端空数据 `rooms.clear()` 覆盖，卡片消失 | 🔴 严重 | `fetchRooms()` 加保护：`if (!relayRunning) return`，服务器停止后不再从后端刷新房间 |
+| 59 | **断开后卡片状态仍显示「已连接」** — room-conn 判断基于 `HOST_STATE.connected`，而 host 进程未停时该值会被轮询拉回 true | 🟡 中 | 判断改为 `!relayRunning \|\| r.status === 'disconnected'` 优先显示「已断开」 |
+| 60 | **连接状态行样式** — 呼吸圆点动画（dotPulse）在连接状态行仍保留 | 🟢 低 | 移除圆点与呼吸动画；「已连接」文字绿色（`--success`），「已断开」保持灰色 |
+| 61 | **`deleteRoomById`（删除房间）未绑后端** — 只删前端 `rooms` Map，后端房间仍存在，5s 轮询后复活 | 🔴 严重 | 先调 `DELETE /rooms/{id}` 通知后端回收，再移除前端卡片 |
+| 62 | **`startRoomById`（启动房间）未绑后端** — 只改前端 `status='waiting'`，中继端口早已释放，房间实际不可用 | 🔴 严重 | 复用 `POST /host/rooms` 创建流程重新分配端口/注册，用新 roomId/connectionCode 更新卡片 |
+
+---
+
+### 各修复详情
+
+#### #55 停止服务器按钮绑定后端
+
+**文件:** `app/relay/webview/yunyi.html` → `shutdownRelay()`
+
+```js
+// 旧：仅前端标志
+relayRunning = false;
+rooms.forEach(r => { r.status = 'closed'; });
+
+// 新：真正断开 host 控制连接 + 保留卡片标记断开
+relayRunning = false;
+await fetch(HOST_API + '/host/disconnect', { method: 'POST' });
+HOST_STATE.connected = false;
+HOST_STATE.relayIp = '';
+rooms.forEach(r => { r.status = 'disconnected'; });
+```
+
+#### #56 IP 地址卡片统一
+
+**文件:** `app/relay/webview/yunyi.html`
+
+- HTML：删掉 `relay-ip-panel`（只读展示）、`relay-ip-setup`、`relay-ip-edit` 三个面板，合并为一个可编辑表单（`edit-ipv6` / `edit-ipv4` 输入框 + 提示文字）
+- `renderRelayIP()`：统一只显示一个面板；未运行输入框可编辑，运行中 `readOnly`；不再切换 display/setup/edit
+- `saveRelayIP()`：运行中拒绝保存；去掉 setup/edit 面板判断与「保存并启动」逻辑
+- 新增回车绑定：`edit-ipv6`/`edit-ipv4` 按 Enter 触发 `saveRelayIP()`；运行中 focus 时提示「需先停止服务器」
+
+#### #57 创建房间自动填 IP
+
+**文件:** `app/relay/webview/yunyi.html`
+
+```js
+// openCreateRoomModal()：按 relayRunning 判断
+if (relayRunning && CONFIG.publicIp && CONFIG.publicIp !== '127.0.0.1') {
+    ipInput.value = CONFIG.publicIp;
+}
+```
+同时移除 `renderHostPanel()` 里基于 `HOST_STATE.connected` 的预填，避免两处抢填。
+
+#### #58 关闭服务器房间卡片保留
+
+**文件:** `app/relay/webview/yunyi.html` → `fetchRooms()`
+
+```js
+// 旧：!relayRunning && !HOST_STATE.connected 才 return（HOST_STATE.connected 会被拉回 true 导致失效）
+// 新：服务器停止即不刷新
+if (!relayRunning) return;
+```
+
+#### #59 断开状态判断
+
+**文件:** `app/relay/webview/yunyi.html` → `renderRoomGrid()`
+
+```js
+${(!relayRunning || r.status === 'disconnected')
+    ? '已断开: ' + (r.relayIp || HOST_STATE.relayIp)
+    : (HOST_STATE.connected && HOST_STATE.relayIp) ? '已连接: ' + HOST_STATE.relayIp : ''}
+```
+
+#### #61 / #62 删除与启动房间绑定后端
+
+**文件:** `app/relay/webview/yunyi.html`
+
+```js
+// deleteRoomById：先通知后端再删前端
+await apiDelete('/rooms/' + roomId);
+rooms.delete(roomId);
+
+// startRoomById：复用创建流程真正重启
+await fetch(HOST_API + '/rooms', { method: 'POST', body: JSON.stringify({ roomName, localMcPort, relayIp, controlPort }) });
+// 用返回的 roomId / connectionCode / assignedPort 更新房间对象
+```
+
+---
+
+### 涉及文件
+
+- `app/relay/webview/yunyi.html` → 已同步 `dist/pkg/webview/yunyi.html`
+
+### 验证
+
+- JS 语法检查（`new Function` 编译 script 块）通过 ✅
+- 手动场景待确认：创建房间 → 关闭服务器 → 卡片保留并显示「已断开: IP」；中继启动/停止时创建房间的 IP 自动填入
+
+---
+
+## 2026-08-06 — ReliableUdpChannel 代码审查修复（自 join 崩溃 + use-after-free + 数据竞争）
+
+> 审查 P2P 打洞后的可靠 UDP 传输层 `NetEngine/ReliableUdpChannel.cpp`，定位并修复一个必然触发的严重崩溃 bug、一个潜在 use-after-free，以及一处无锁读数据竞争。
+
+---
+
+### 已发现并修复的问题
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| 63 | **自 join 崩溃** — `retransmitLoop()` 在 `_mutex` 持锁状态下调用 `doClose(-1)`，`doClose()` 里 `_retransmitThread.join()` 在线程内部 join 自己，标准规定抛 `std::system_error(resource_deadlock_would_occur)`，异常在线程入口无人 catch → `std::terminate()` 整个进程崩溃。任何一次对端超时未确认（网络抖动/掉线/连接中断）都会精确命中 | 🔴 严重 | 新增 `finishFromRetransmitThread()`：设置 `_closed` + 回调 `_onClose`，**不 join 自己**；判死逻辑改为只置标志、退出锁块后再收尾 |
+| 64 | **持锁回调重入死锁** — 原 `doClose(-1)` 在 `_mutex` 持锁时调用，`_onClose` 回调若重入需锁的方法（如 send/handleData）直接死锁（`std::mutex` 非递归） | 🔴 严重 | 随 #63 一起解决：判死标记 `timedOut`，锁块外统一收尾 |
+| 65 | **UDP 接收循环 use-after-free** — `init()` 的接收闭包捕获裸 `this`；IOCP 的 `closesocket` 不保证已入队的完成包被同步撤销，对象析构后回调触发时 `this` 悬空 | 🟡 中 | 类继承 `enable_shared_from_this`，闭包改捕获 `weak_from_this()`，回调先 `lock()`，失败（对象已析构）直接放弃 |
+| 66 | **`_nextSeq` 无锁读** — `close()` 读 `_nextSeq` 而 `processSend()` 持锁修改，理论数据竞争 | 🟢 低 | `close()` 读 `_nextSeq` 改为持锁 |
+
+---
+
+### 各修复详情
+
+#### #63/#64 自 join 崩溃 + 持锁回调死锁
+
+**文件:** `NetEngine/ReliableUdpChannel.cpp` + `.h`
+
+```cpp
+// retransmitLoop() 内：判死只置标志，退出锁块后再收尾
+bool timedOut = false;
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    while (it != _unacked.end()) {
+        if (now - pkt.sendTickMs >= kRetransmitMs) {
+            if (pkt.retries >= kMaxRetries) {
+                timedOut = true;   // ← 不再持锁调 doClose
+                break;
+            }
+            ...
+        }
+    }
+}
+if (timedOut) {
+    finishFromRetransmitThread(-1);  // ← 不 join 自己
+    return;                          // 函数返回，线程自然结束
+}
+```
+
+```cpp
+// 新增：仅供 retransmitLoop 内部收尾
+void ReliableUdpChannel::finishFromRetransmitThread(int err) {
+    _closed.store(true, std::memory_order_release);
+    if (_onClose) _onClose(err);
+    // 不 join _retransmitThread —— 本方法就运行在该线程上
+}
+```
+
+外部线程（收到 FIN 的 `onUdpRecv`）仍走 `doClose()`（正常 join，无自 join）。
+
+#### #65 UDP 接收循环 use-after-free
+
+**文件:** `NetEngine/ReliableUdpChannel.h/.cpp` + `app/component/P2PTunnel.h/.cpp`
+
+```cpp
+// .h：继承 enable_shared_from_this（本类必须以 shared_ptr 管理）
+class ReliableUdpChannel : public std::enable_shared_from_this<ReliableUdpChannel> { ... };
+
+// .cpp init()：闭包改捕获 weak_from_this，回调先 lock
+auto weakSelf = weak_from_this();
+auto arm = std::make_shared<std::function<void()>>();
+*arm = [weakSelf, arm]() {
+    auto self = weakSelf.lock();
+    if (!self || self->isClosed()) return;   // 对象已析构 → 放弃
+    self->_transport->postRecvFrom(self->_sock,
+        [weakSelf, arm](SOCKET, const char* d, size_t l, const sockaddr_storage& src) {
+            auto self2 = weakSelf.lock();
+            if (!self2 || self2->isClosed()) return;
+            self2->onUdpRecv(d, l, src);
+            (*arm)();
+        });
+};
+```
+
+```cpp
+// P2PTunnel.h：unique_ptr → shared_ptr
+std::shared_ptr<ReliableUdpChannel> _channel;
+// P2PTunnel.cpp
+_channel = std::make_shared<ReliableUdpChannel>();
+```
+
+#### #66 `_nextSeq` 数据竞争
+
+**文件:** `NetEngine/ReliableUdpChannel.cpp`
+
+```cpp
+uint32_t finSeq;
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    finSeq = _nextSeq;
+}
+std::string fin = pack(FLAG_FIN, finSeq, nullptr, 0);
+```
+
+---
+
+### 涉及文件
+
+- `NetEngine/ReliableUdpChannel.h`
+- `NetEngine/ReliableUdpChannel.cpp`
+- `app/component/P2PTunnel.h`
+- `app/component/P2PTunnel.cpp`
+
+### 验证
+
+- 编译：`云驿.vcxproj Release|x64` → 0 Error ✅
+- 新 exe 已同步 `dist/pkg/云驿.exe`（847KB）
+- 待验证：打洞直连建立后让对端掉线/断网，程序应走 `_onClose` 回调正常收尾，不再崩溃

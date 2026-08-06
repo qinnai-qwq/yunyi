@@ -32,14 +32,20 @@ bool ReliableUdpChannel::init(TransportCore* transport, SOCKET udpSock,
     // 启动重传线程
     _retransmitThread = std::thread(&ReliableUdpChannel::retransmitLoop, this);
 
-    // 投递 UDP 接收并持续循环（自引用 std::function，经 shared_ptr 安全捕获）
+    // 投递 UDP 接收并持续循环。
+    // 用 weak_from_this 持有本对象：IOCP 完成包可能在本对象析构后才回调，
+    // 此时 lock() 失败即放弃，避免 use-after-free（本类必须以 shared_ptr 管理）。
+    auto weakSelf = weak_from_this();
     auto arm = std::make_shared<std::function<void()>>();
-    *arm = [this, arm]() {
-        if (isClosed()) return;
-        _transport->postRecvFrom(_sock,
-            [this, arm](SOCKET, const char* d, size_t l,
-                        const sockaddr_storage& src) {
-                onUdpRecv(d, l, src);
+    *arm = [weakSelf, arm]() {
+        auto self = weakSelf.lock();
+        if (!self || self->isClosed()) return;
+        self->_transport->postRecvFrom(self->_sock,
+            [weakSelf, arm](SOCKET, const char* d, size_t l,
+                            const sockaddr_storage& src) {
+                auto self2 = weakSelf.lock();
+                if (!self2 || self2->isClosed()) return;
+                self2->onUdpRecv(d, l, src);
                 (*arm)();  // 重新投递，形成接收循环
             });
     };
@@ -157,6 +163,7 @@ void ReliableUdpChannel::retransmitLoop() {
         if (isClosed()) break;
 
         bool needSend = false;
+        bool timedOut  = false;
         {
             std::lock_guard<std::mutex> lock(_mutex);
             uint64_t now = GetTickCount64();
@@ -165,9 +172,9 @@ void ReliableUdpChannel::retransmitLoop() {
                 auto& pkt = it->second;
                 if (now - pkt.sendTickMs >= kRetransmitMs) {
                     if (pkt.retries >= kMaxRetries) {
-                        // 对端长时间无确认，判死
-                        doClose(-1);
-                        return;
+                        // 对端长时间无确认，判死：只标记，锁外再收尾（避免持锁回调重入 + 自 join）
+                        timedOut = true;
+                        break;
                     }
                     pkt.sendTickMs = now;
                     pkt.retries++;
@@ -177,6 +184,10 @@ void ReliableUdpChannel::retransmitLoop() {
                 ++it;
             }
         }
+        if (timedOut) {
+            finishFromRetransmitThread(-1);
+            return;  // 函数返回，线程自然结束，无需 join 自己
+        }
         if (needSend) processSend();
     }
 }
@@ -185,7 +196,12 @@ void ReliableUdpChannel::close() {
     if (isClosed()) return;
     _closed.store(true, std::memory_order_release);
     // 发 FIN 告知对端（尽力而为，不等待确认）
-    std::string fin = pack(FLAG_FIN, _nextSeq, nullptr, 0);
+    uint32_t finSeq;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        finSeq = _nextSeq;
+    }
+    std::string fin = pack(FLAG_FIN, finSeq, nullptr, 0);
     if (_transport && _sock != INVALID_SOCKET) {
         _transport->postSendTo(_sock, fin.data(), fin.size(), _peer, nullptr);
     }
@@ -197,6 +213,12 @@ void ReliableUdpChannel::doClose(int err) {
     _closed.store(true, std::memory_order_release);
     if (_retransmitThread.joinable()) _retransmitThread.join();
     if (_onClose) _onClose(err);
+}
+
+void ReliableUdpChannel::finishFromRetransmitThread(int err) {
+    _closed.store(true, std::memory_order_release);
+    if (_onClose) _onClose(err);
+    // 不 join _retransmitThread —— 本方法就运行在该线程上，返回后线程自然结束
 }
 
 std::string ReliableUdpChannel::pack(uint8_t flags, uint32_t seq,
