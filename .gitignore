@@ -28,5 +28,8 @@ app/
 # Third-party deps (本地构建用，不入库)
 third_party/
 
+# WebView2 SDK (第三方头文件/库，本地构建用，不入库)
+webview2-sdk/
+
 # Build output: dist 构建产物不入库（发行版走 GitHub Releases）
 dist/*
