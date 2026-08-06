@@ -8,7 +8,7 @@
 .idea/
 .vscode/
 
-# Build output
+# Build output (纯构建产物不入库)
 x64/
 *.pdb
 *.ilk
@@ -22,14 +22,5 @@ x64/
 # Logs
 logs/
 
-# App (不开源 — 软件安全 + 用户信息安全)
-app/
-
-# Third-party deps (本地构建用，不入库)
-third_party/
-
-# WebView2 SDK (第三方头文件/库，本地构建用，不入库)
-webview2-sdk/
-
-# Build output: dist 构建产物不入库（发行版走 GitHub Releases）
-dist/*
+# vcpkg 临时下载缓存（非源码依赖，不入库）
+third_party/vcpkg_tmp/
