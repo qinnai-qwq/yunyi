@@ -55,6 +55,14 @@ for p in "${PUBLIC_PATHS[@]}"; do
   git checkout master -- "$p" 2>/dev/null || echo "  (跳过不存在: $p)"
 done
 
+# 移除 public 分支上已废弃的顶层目录（旧 NetEngine / 误入的 app/dist）
+for stale in NetEngine app dist third_party webview2-sdk; do
+  if git ls-files --error-unmatch "$stale" >/dev/null 2>&1; then
+    echo "  移除废弃目录: $stale"
+    git rm -r --cached --quiet "$stale" 2>/dev/null || true
+  fi
+done
+
 echo "[3/4] 提交并推送 qinnai-qwq..."
 git add -A
 git commit -m "sync: 同步 master 开源部分到 public" 2>/dev/null || echo "  无变更，跳过提交"
