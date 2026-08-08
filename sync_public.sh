@@ -63,6 +63,12 @@ for stale in NetEngine app dist third_party webview2-sdk; do
   fi
 done
 
+# public 分支的 .gitignore 在 master 基础上额外排除 dist/（发行走 Releases，不入开源仓库）
+if ! grep -q "^dist/$" .gitignore 2>/dev/null; then
+  printf "\n# public 分支专用：dist 发行产物不入开源仓库\ndist/\n" >> .gitignore
+  echo "  已追加 dist/ 到 public .gitignore"
+fi
+
 echo "[3/4] 提交并推送 qinnai-qwq..."
 git add -A
 git commit -m "sync: 同步 master 开源部分到 public" 2>/dev/null || echo "  无变更，跳过提交"

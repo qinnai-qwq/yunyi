@@ -24,3 +24,6 @@ logs/
 
 # vcpkg 临时下载缓存（非源码依赖，不入库）
 third_party/vcpkg_tmp/
+
+# public 分支专用：dist 发行产物不入开源仓库
+dist/
