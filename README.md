@@ -3,7 +3,7 @@
 > Minecraft 联机中继工具 —— 让没有公网 IP 的朋友，通过有公网 IP 的中继服务器加入联机房间。
 > 玩家无需安装任何软件，直接把连接码粘贴到 MC 客户端的"直接连接"即可。
 
-**当前版本：v1.2.1**
+**当前版本：v1.2.2**
 
 ---
 
@@ -12,7 +12,7 @@
 ### 场景：房主没有公网 IP，朋友有公网 IP
 
 **1. 朋友（中继端）**
-- 下载 `云驿-v1.2.1.zip`，解压
+- 下载 `云驿-v1.2.2.zip`，解压
 - 运行 `云驿GUI.exe`
 - 中继面板会显示公网 IPv6 地址（例如 `2408:826c:...`）
 - 把这个地址发给房主
@@ -107,23 +107,15 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 
 ```
 云驿/
-├── NetEngine/                   引擎层（静态库，不含业务逻辑）
-│   ├── Director.h/.cpp          引擎唯一门面（全局单例）
-│   ├── TransportCore.h/.cpp     Windows IOCP 异步 I/O
-│   ├── Session.h/.cpp           会话基类
-│   ├── TlsPskContext.h/.cpp     OpenSSL TLS-PSK 封装（memory BIO）
-│   ├── FrameCodec.h/.cpp        控制帧编解码
-│   ├── FrameDispatcher.h/.cpp   帧分发器
-│   ├── TunnelManager.h/.cpp     数据隧道管理
-│   ├── PortPool.h/.cpp          端口池分配/回收
-│   ├── ReliableUdpChannel.h/.cpp 可靠 UDP 通道（NAT 打洞数据面）
-│   ├── Scheduler.h/.cpp         定时器（心跳/超时/重连退避）
-│   ├── Ref.h/.cpp               引用计数基类
-│   ├── AutoreleasePool.h/.cpp   自动释放池
-│   ├── ResourcePool.h           高频对象复用池（模板）
-│   └── NetUtil.h/.cpp           网络工具函数
+├── core/                        Core.lib — 平台/协议层（可开源）
+│   ├── include/yunyi/core/      头文件（eventloop/tls/protocol/net/pool/log/util）
+│   └── src/                     实现
 │
-├── app/                         业务层
+├── framework/                   Framework.lib — 引擎风格模型（可开源）
+│   ├── include/yunyi/framework/ 头文件（engine/session/channel/p2p/lifecycle/udp）
+│   └── src/                     实现
+│
+├── app/                         业务层（角色逻辑，闭源）
 │   ├── common/
 │   │   └── Config.h/.cpp        全局配置 + CLI 参数解析
 │   ├── relay/
@@ -133,13 +125,14 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 │   ├── hostagent/
 │   │   └── HostAgentApp.h/.cpp  房主端主程序（含 P2P 直连端点）
 │   ├── component/
-│   │   ├── ControlChannel.h/.cpp 控制连接状态机
 │   │   ├── RoomRegistry.h/.cpp  房间注册表
-│   │   ├── ConnectionCode.h/.cpp 连接码生成/解析
-│   │   ├── StunClient.h/.cpp    STUN 客户端（获取公网映射）
-│   │   └── P2PTunnel.h/.cpp     P2P 打洞隧道（无中继直连）
+│   │   └── P2PCoordinatorWinHttp.h/.cpp  P2P 协调客户端（winhttp）
 │   └── gui/
 │       └── main.cpp             WebView2 原生窗口宿主
+│
+├── Core.vcxproj                 静态库工程
+├── Framework.vcxproj            静态库工程
+├── 云驿.vcxproj                 主 exe（链接 Framework.lib + Core.lib）
 │
 ├── docs/
 │   ├── protocol.md              控制帧协议规范
@@ -150,9 +143,8 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 ├── tools/                       测试工具
 ├── dist/                        分发目录
 │   ├── pkg/                     可部署文件
-│   └── 云驿-v1.2.1.zip  发布包
+│   └── 云驿-v1.2.2.zip  发布包
 │
-├── 云驿.vcxproj                 后端项目文件
 └── 云驿GUI.vcxproj              GUI 项目文件
 ```
 
@@ -232,7 +224,7 @@ Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 ## 开发路线
 
 - [x] 项目结构 + 架构设计
-- [x] NetEngine 全部模块
+- [x] Core/Framework 全部模块
 - [x] TLS-PSK 加密控制信道
 - [x] 控制帧协议（REGISTER / HEARTBEAT / OPEN_STREAM 等）
 - [x] 双端口隧道架构（玩家 → 中继 → TLS 隧道 → 房主 → MC）

@@ -3,5 +3,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="Core.vcxproj" Id="a3f2c1d4-5b6e-4f8a-9c2d-1e0f3a4b5c6d" />
+  <Project Path="Framework.vcxproj" Id="b4e5f6a7-8c9d-4e0f-1a2b-3c4d5e6f7081" />
   <Project Path="云驿.vcxproj" Id="c1316cde-12c1-42c5-9806-68f766b0ade1" />
 </Solution>

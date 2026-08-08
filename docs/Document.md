@@ -1,7 +1,7 @@
-# 云驿（Yún Yì） v1.2.1 架构设计文档
+# 云驿（Yún Yì） v1.2.2 架构设计文档
 
 > 一个让没有公网 IP 的朋友，也能通过你的公网服务器加入 Minecraft 联机房间的中继工具。
-> 当前版本：**v1.2.1** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
+> 当前版本：**v1.2.2** — 双端口隧道架构 + 统一事件流 + RoomRegistry 激活 + HostAgent WebUI。
 
 ---
 
@@ -115,7 +115,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ---
 
-## 4. 软件架构：NetEngine 引擎 + 应用层
+## 4. 软件架构：Core 平台层 + Framework 引擎层 + App 应用层
 
 ### 4.1 分层原则
 
@@ -168,7 +168,7 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ### 4.3 关键基类对照表（沿用自研引擎命名习惯）
 
-| GameEngine 中的类 | NetEngine 中对应 | 作用 |
+| GameEngine 中的类 | Framework 中对应 | 作用 |
 |---|---|---|
 | Director | Director | 全局单例，引擎唯一门面 |
 | Ref | Ref | 引用计数基类，管理 socket/session 生命周期 |
@@ -187,51 +187,51 @@ RECONNECTING --重试N次仍失败--> DISCONNECTED
 
 ```
 云驿/
-├─ NetEngine/                        静态库 — 三个角色共用，不含业务逻辑
-│  ├─ Director.h/.cpp                全局单例，引擎唯一门面 (pimpl)
-│  ├─ Ref.h/.cpp                     引用计数基类
-│  ├─ Scheduler.h/.cpp               定时器调度 — 心跳/超时/重连退避
-│  ├─ Session.h/.cpp                 TCP 会话基类
-│  ├─ TransportCore.h/.cpp           IOCP 重叠 I/O (IPv4+IPv6 双栈)
-│  ├─ TlsPskContext.h/.cpp           OpenSSL TLS-PSK 封装 (memory BIO)
-│  ├─ FrameCodec.h/.cpp              控制帧编解码 (大端序)
-│  ├─ FrameDispatcher.h/.cpp         按帧 type 注册/分发处理器
-│  ├─ TunnelManager.h/.cpp           数据隧道生命周期管理
-│  ├─ PortPool.h/.cpp                端口池自动分配/回收
-│  ├─ ReliableUdpChannel.h/.cpp     可靠 UDP 通道 (NAT 打洞数据面)
-│  ├─ NetUtil.h/.cpp                 双栈网络工具 (createSocket/fillAddr)
-│  ├─ ResourcePool.h                 高频对象复用池 (模板类, header-only)
-│  ├─ AutoreleasePool.h/.cpp         延迟释放池
-│  └─ NetEngine_H.h                  总头文件
+├─ core/                             Core.lib — 平台/协议层，纯技术无业务 (可开源)
+│  ├─ include/yunyi/core/            头文件 (命名空间 yunyi/core)
+│  │  ├─ eventloop/                 INetEventLoop.h, TransportCore.h (IOCP 双栈)
+│  │  ├─ tls/                       TlsPskContext.h (OpenSSL TLS-PSK)
+│  │  ├─ protocol/                  FrameCodec.h (控制帧编解码)
+│  │  ├─ net/                       NetUtil.h (双栈网络工具)
+│  │  ├─ pool/                      PortPool.h, ResourcePool.h (端口池/对象池)
+│  │  ├─ log/                       Logger.h (日志单例)
+│  │  └─ util/                      ConnectionCode.h, StunClient.h
+│  └─ src/                          实现 (与 include 同功能域)
 │
-├─ app/                              业务逻辑层 — 按角色链接 NetEngine
+├─ framework/                       Framework.lib — 引擎风格编程模型 (可开源)
+│  ├─ include/yunyi/framework/      头文件 (命名空间 yunyi/framework)
+│  │  ├─ engine/                    Director.h, Scheduler.h, FrameDispatcher.h
+│  │  ├─ session/                   Session.h, TunnelManager.h
+│  │  ├─ channel/                   ControlChannel.h (六状态控制连接状态机)
+│  │  ├─ p2p/                       P2PTunnel.h, P2PCoordinator.h
+│  │  ├─ lifecycle/                 Ref.h, AutoreleasePool.h
+│  │  └─ udp/                       ReliableUdpChannel.h (可靠 UDP 打洞数据面)
+│  └─ src/                          实现 (与 include 同功能域)
+│
+├─ Core.vcxproj / Framework.vcxproj 静态库工程
+├─ 云驿.vcxproj                     主 exe (链接 Framework.lib + Core.lib)
+│
+├─ app/                             业务逻辑层 — 角色逻辑，闭源
 │  ├─ common/
 │  │  └─ Config.h/.cpp               全局配置 — 公网IP/端口范围/心跳参数
 │  ├─ component/
 │  │  ├─ RoomRegistry.h/.cpp         房间注册表 + 超时检测 (中继用)
-│  │  ├─ ControlChannel.h/.cpp       控制连接状态机 + 心跳 + 重连
-│  │  ├─ ConnectionCode.h/.cpp       连接码生成/解析 "IP:Port"
-│  │  ├─ StunClient.h/.cpp           STUN 客户端 (获取公网映射)
-│  │  └─ P2PTunnel.h/.cpp            P2P 打洞隧道 (无中继直连)
+│  │  └─ P2PCoordinatorWinHttp.h/.cpp P2P 协调服务器客户端 (winhttp)
 │  ├─ gui/
 │  │  └─ main.cpp                    Win32 + WebView2 无边框窗口宿主
 │  ├─ relay/
-│  │  ├─ RelayApp.h/.cpp             中继服务器主程序 (引擎 + HTTP 线程)
+│  │  ├─ RelayApp.h/.cpp             中继服务器主程序 (Core+Framework + HTTP 线程)
 │  │  ├─ HttpApiRouter.h/.cpp        REST API 路由 (cpp-httplib)
 │  │  └─ webview/
 │  │     └─ yunyi.html               WebUI 单文件 SPA
 │  ├─ hostagent/
-│  │  └─ HostAgentApp.h/.cpp         房主端主程序 (含数据隧道接线)
+│  │  └─ HostAgentApp.h/.cpp         房主端主程序 (含数据隧道 + P2P 接线)
 │  └─ main.cpp                       CLI 入口 (--relay / --host)
 │
 ├─ third_party/                      已集成第三方库
 │  ├─ httplib/                       cpp-httplib HTTP 服务器
 │  ├─ nlohmann_json/                 nlohmann/json 序列化
 │  └─ openssl/                       OpenSSL 3.x (include + lib)
-│
-├─ tools/                            工具脚本
-│  ├─ test_tunnel.py                 数据隧道端到端测试
-│  └─ installer.nsi                  NSIS 安装包脚本
 │
 ├─ webview2-sdk/                     Microsoft Edge WebView2 SDK
 │

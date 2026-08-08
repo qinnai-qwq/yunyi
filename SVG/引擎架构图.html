@@ -17,70 +17,65 @@
 </style>
 </head>
 <body>
-<div class="title">云驿 项目结构 v1.2.0 (2026-07-26)</div>
+<div class="title">云驿 项目结构 v1.2.2 (2026-08-08)</div>
 <pre>
 <span class="solution">云驿GUI.vcxproj</span>                         <span class="comment">GUI 桌面客户端项目 (WebView2)</span>
 <span class="solution">云驿.vcxproj</span>                             <span class="comment">服务端项目 (Relay + HostAgent)</span>
 │
-├─ <span class="folder">NetEngine/</span>                           <span class="comment">静态库 — 三个角色共用，不含业务逻辑</span>
-│  ├─ <span class="h">Director</span>.h/.cpp              <span class="comment">全局单例，引擎唯一门面 (pimpl)</span>
-│  │                               <span class="comment">  + touchRoomHeartbeat() / findRoomByControlSession()</span>
-│  ├─ <span class="h">Ref</span>.h/.cpp                   <span class="comment">引用计数基类</span>
-│  ├─ <span class="h">Scheduler</span>.h/.cpp             <span class="comment">定时器调度 — 心跳/超时/重连退避</span>
-│  ├─ <span class="h">Session</span>.h/.cpp               <span class="comment">TCP 会话基类</span>
-│  ├─ <span class="h">TransportCore</span>.h/.cpp         <span class="comment">IOCP 重叠 I/O (IPv4+IPv6 双栈)</span>
-│  │                               <span class="comment">  + configureKeepalive(30s/10s) 死连接检测</span>
-│  ├─ <span class="h">TlsPskContext</span>.h/.cpp         <span class="comment">OpenSSL TLS-PSK 封装 (memory BIO + std::mutex)</span>
-│  ├─ <span class="h">FrameCodec</span>.h/.cpp            <span class="comment">控制帧编解码 (大端序)</span>
-│  ├─ <span class="h">FrameDispatcher</span>.h/.cpp       <span class="comment">按帧 type 注册/分发处理器</span>
-│  ├─ <span class="h">TunnelManager</span>.h/.cpp         <span class="comment">隧道生命周期 + totalBytesRelayed()</span>
-│  ├─ <span class="h">PortPool</span>.h/.cpp              <span class="comment">端口池自动分配/回收</span>
-│  ├─ <span class="h">ReliableUdpChannel</span>.h/.cpp   <span class="comment">可靠 UDP 通道 (NAT 打洞数据面, seq/ack/重传)</span>
-│  ├─ <span class="h">NetUtil</span>.h/.cpp               <span class="comment">双栈网络工具 (createSocket/fillAddr)</span>
-│  ├─ <span class="h">ResourcePool</span>.h                     <span class="comment">高频对象复用池 (模板类, header-only)</span>
-│  ├─ <span class="h">AutoreleasePool</span>.h/.cpp        <span class="comment">延迟释放池</span>
-│  └─ <span class="h">NetEngine_H</span>.h                       <span class="comment">总头文件</span>
+├─ <span class="folder">core/</span>                                 <span class="comment">Core.lib — 平台/协议层，纯技术无业务 (可开源)</span>
+│  ├─ <span class="folder">include/yunyi/core/</span>               <span class="comment">头文件 (命名空间 yunyi/core)</span>
+│  │  ├─ <span class="folder">eventloop/</span>  <span class="h">INetEventLoop</span>.h, <span class="h">TransportCore</span>.h  <span class="comment">IOCP 异步 I/O (双栈)</span>
+│  │  ├─ <span class="folder">tls/</span>       <span class="h">TlsPskContext</span>.h          <span class="comment">OpenSSL TLS-PSK (memory BIO)</span>
+│  │  ├─ <span class="folder">protocol/</span> <span class="h">FrameCodec</span>.h            <span class="comment">控制帧编解码 (大端序)</span>
+│  │  ├─ <span class="folder">net/</span>      <span class="h">NetUtil</span>.h               <span class="comment">双栈网络工具</span>
+│  │  ├─ <span class="folder">pool/</span>     <span class="h">PortPool</span>.h, <span class="h">ResourcePool</span>.h  <span class="comment">端口池 + 对象复用池</span>
+│  │  ├─ <span class="folder">log/</span>      <span class="h">Logger</span>.h                <span class="comment">日志单例</span>
+│  │  └─ <span class="folder">util/</span>     <span class="h">ConnectionCode</span>.h, <span class="h">StunClient</span>.h  <span class="comment">连接码 + STUN</span>
+│  └─ <span class="folder">src/</span>                                <span class="comment">实现 (与 include 同域)</span>
 │
-├─ <span class="folder">app/</span>                                 <span class="comment">业务逻辑层 — 按角色链接 NetEngine</span>
+├─ <span class="folder">framework/</span>                             <span class="comment">Framework.lib — 引擎风格编程模型 (可开源)</span>
+│  ├─ <span class="folder">include/yunyi/framework/</span>          <span class="comment">头文件 (命名空间 yunyi/framework)</span>
+│  │  ├─ <span class="folder">engine/</span>   <span class="h">Director</span>.h, <span class="h">Scheduler</span>.h, <span class="h">FrameDispatcher</span>.h  <span class="comment">引擎门面/调度/帧分发</span>
+│  │  ├─ <span class="folder">session/</span> <span class="h">Session</span>.h, <span class="h">TunnelManager</span>.h   <span class="comment">会话 + 隧道管理</span>
+│  │  ├─ <span class="folder">channel/</span> <span class="h">ControlChannel</span>.h          <span class="comment">六状态控制连接状态机</span>
+│  │  ├─ <span class="folder">p2p/</span>     <span class="h">P2PTunnel</span>.h, <span class="h">P2PCoordinator</span>.h  <span class="comment">打洞隧道 + 协调接口</span>
+│  │  ├─ <span class="folder">lifecycle/</span> <span class="h">Ref</span>.h, <span class="h">AutoreleasePool</span>.h  <span class="comment">引用计数/释放池</span>
+│  │  └─ <span class="folder">udp/</span>     <span class="h">ReliableUdpChannel</span>.h       <span class="comment">可靠 UDP (打洞数据面)</span>
+│  └─ <span class="folder">src/</span>                                <span class="comment">实现 (与 include 同域)</span>
+│
+├─ <span class="folder">app/</span>                                 <span class="comment">业务逻辑层 — 角色逻辑，闭源</span>
 │  ├─ <span class="folder">common/</span>
 │  │  └─ <span class="h">Config</span>.h/.cpp               <span class="comment">全局配置 — 公网IP/端口范围/心跳/keepalive</span>
 │  ├─ <span class="folder">component/</span>
-│  │  ├─ <span class="h">RoomRegistry</span>.h/.cpp        <span class="comment">房间注册表 + 超时检测 (心跳同步 ✓)</span>
-│  │  ├─ <span class="h">ControlChannel</span>.h/.cpp      <span class="comment">控制连接状态机 + 心跳 + 重连</span>
-│  │  │                               <span class="comment">  + registerRoomAsync() 异步等待 ACK</span>
-│  │  ├─ <span class="h">ConnectionCode</span>.h/.cpp      <span class="comment">连接码生成/解析 "IP:Port"</span>
-│  │  ├─ <span class="h">StunClient</span>.h/.cpp          <span class="comment">STUN 客户端 (RFC 8489, 获取公网映射)</span>
-│  │  └─ <span class="h">P2PTunnel</span>.h/.cpp           <span class="comment">P2P 打洞隧道 (无中继直连 + ReliableUdpChannel)</span>
+│  │  ├─ <span class="h">RoomRegistry</span>.h/.cpp        <span class="comment">房间注册表 + 超时检测</span>
+│  │  └─ <span class="h">P2PCoordinatorWinHttp</span>.h/.cpp <span class="comment">P2P 协调服务器客户端 (winhttp)</span>
 │  ├─ <span class="folder">gui/</span>
 │  │  └─ <span class="cpp">main.cpp</span>                      <span class="comment">Win32 + WebView2 无边框窗口宿主</span>
 │  ├─ <span class="folder">relay/</span>
-│  │  ├─ <span class="h">RelayApp</span>.h/.cpp              <span class="comment">中继服务器主程序 (引擎 + HTTP)</span>
-│  │  │                               <span class="comment">  + checkStaleRooms() RoomRegistry 超时清理</span>
+│  │  ├─ <span class="h">RelayApp</span>.h/.cpp              <span class="comment">中继服务器主程序 (Core+Framework + HTTP)</span>
 │  │  ├─ <span class="h">HttpApiRouter</span>.h/.cpp         <span class="comment">REST API 路由 (RoomRegistry 同步)</span>
 │  │  └─ <span class="folder">webview/</span>
 │  │     └─ yunyi.html                  <span class="comment">WebUI SPA (双角色: relay/host 自适应)</span>
 │  ├─ <span class="folder">hostagent/</span>
-│  │  └─ <span class="h">HostAgentApp</span>.h/.cpp          <span class="comment">房主端 (数据隧道 + HTTP 服务器)</span>
-│  │                                  <span class="comment">  + /api/v1/rooms 通过 REGISTER 帧创建</span>
+│  │  └─ <span class="h">HostAgentApp</span>.h/.cpp          <span class="comment">房主端 (数据隧道 + HTTP 服务器 + P2P)</span>
 │  └─ <span class="cpp">main.cpp</span>                      <span class="comment">CLI 入口 (--relay / --host)</span>
+│
+├─ <span class="h">Core</span>.vcxproj / <span class="h">Framework</span>.vcxproj      <span class="comment">静态库工程</span>
+├─ <span class="h">云驿</span>.vcxproj                        <span class="comment">主 exe (链接 Framework.lib + Core.lib)</span>
 │
 ├─ <span class="folder">third_party/</span>                         <span class="comment">已集成第三方库</span>
 │  ├─ <span class="folder">httplib/</span>         httplib.h           <span class="comment">cpp-httplib HTTP 服务器 (双端共用)</span>
 │  ├─ <span class="folder">nlohmann_json/</span>  json.hpp            <span class="comment">nlohmann/json 序列化</span>
 │  └─ <span class="folder">openssl/</span>         include/ + lib/     <span class="comment">OpenSSL 3.x (libssl + libcrypto)</span>
 │
-├─ <span class="folder">tools/</span>                               <span class="comment">工具脚本</span>
-│  ├─ test_tunnel.py                           <span class="comment">数据隧道端到端测试</span>
-│  └─ installer.nsi                            <span class="comment">NSIS 安装包脚本</span>
-│
 ├─ <span class="folder">webview2-sdk/</span>                        <span class="comment">Microsoft Edge WebView2 SDK</span>
 │
 ├─ <span class="folder">docs/</span>                                <span class="comment">设计文档</span>
 │  ├─ Document.md                              <span class="comment">架构设计文档</span>
 │  ├─ protocol.md                              <span class="comment">控制帧协议规范</span>
-│  ├─ rest-api.md                              <span class="comment">REST API 手册 (含双角色 + 新字段)</span>
+│  ├─ rest-api.md                              <span class="comment">REST API 手册</span>
 │  ├─ director-api.md                          <span class="comment">Director 公开接口手册</span>
-│  └─ CHANGELOG.md                             <span class="comment">开发日志 (v1.2.0 架构修复)</span>
+│  └─ CHANGELOG.md                             <span class="comment">开发日志</span>
 │
 └─ <span class="folder">SVG/</span>                                 <span class="comment">蓝图 / 架构图</span>
    ├─ 引擎架构图.html                           <span class="comment">项目结构骨架 (当前文件)</span>

@@ -1556,3 +1556,52 @@ std::string fin = pack(FLAG_FIN, finSeq, nullptr, 0);
 - 编译：`云驿.vcxproj Release|x64` → 0 Error ✅
 - 新 exe 已同步 `dist/pkg/云驿.exe`（847KB）
 - 待验证：打洞直连建立后让对端掉线/断网，程序应走 `_onClose` 回调正常收尾，不再崩溃
+
+---
+
+## 2026-08-08 — v1.2.2（引擎三层重构 + 目录重组）
+
+> 将原「NetEngine + app」两段式架构显式拆为 **Core / Framework / App 三层**，目录按 Hermes 风格重组为 include/src 分离 + 功能域子目录。纯重构，行为不变。
+
+---
+
+### 架构变更
+
+| 层 | 目录 | 定位 | 开源 |
+|----|------|------|------|
+| Core | `core/` → Core.lib | 平台/协议层：IOCP、TLS-PSK、帧编解码、网络工具、端口池、日志、连接码、STUN | ✅ 可开源 |
+| Framework | `framework/` → Framework.lib | 引擎风格模型：Director/Scheduler/Session/TunnelManager/FrameDispatcher、控制连接状态机、P2P 打洞 | ✅ 可开源 |
+| App | `app/` | 角色业务：中继/房主/REST API/GUI | ❌ 闭源 |
+
+- **跨平台接口**：新增 `core/include/yunyi/core/eventloop/INetEventLoop.h`，TransportCore(IOCP) 实现之；Linux epoll 可后续作为第二实现
+- **依赖方向单向**：Core ← Framework ← App；消除 Director 对 app/component 的反向依赖（ConnectionCode 上移 Core）
+- **P2P 解耦**：P2PTunnel 的 winhttp 协调拆到 App 层 `P2PCoordinatorWinHttp`，Framework 只依赖抽象接口 `P2PCoordinator`
+- **include 前缀统一**：`yunyi/core/<域>/xxx.h`、`yunyi/framework/<域>/xxx.h`（Hermes 风格）
+- **构建拆分**：Core.vcxproj / Framework.vcxproj（StaticLibrary）+ 主 exe 链接 `Framework.lib;Core.lib`；修复 obj 输出散落（统一到 `x64\Release\<工程>\`）
+
+### 目录结构（摘要）
+
+```
+core/           Core.lib — 平台/协议（可开源）
+  include/yunyi/core/   eventloop tls protocol net pool log util
+  src/                  实现
+framework/      Framework.lib — 引擎风格（可开源）
+  include/yunyi/framework/  engine session channel p2p lifecycle udp
+  src/                    实现
+app/            角色业务（闭源）
+  common/ component/ relay/ hostagent/ gui/
+Core.vcxproj  Framework.vcxproj  静态库工程
+云驿.vcxproj                    主 exe（链接 Framework.lib + Core.lib）
+```
+
+### 相关修复/改动
+
+- 恢复 TransportCore.h / INetEventLoop.h 的精细 Doxygen 注释（重构时曾误压成单行 @brief）
+- 清理构建产物散落目录：`云驿/`(186MB)、`云驿GUI/`(6.8MB)、`.vs/`(1.8GB)、logs
+- 同步更新 SVG/引擎架构图.html、README.md、docs/Document.md、docs/director-api.md
+
+### 验证
+
+- 四工程（Core/Framework/云驿/云驿GUI）Release|x64 编译 0 Error ✅
+- relay/host 启动日志 + REST API 与基线一致 ✅
+- 端到端建房间（REGISTER→REGISTER_ACK）通过 ✅

@@ -31,7 +31,10 @@ fi
 PUBLIC_PATHS=(
   ".gitattributes"
   ".gitignore"
-  "NetEngine"
+  "core"
+  "framework"
+  "Core.vcxproj"
+  "Framework.vcxproj"
   "README.md"
   "SVG"
   "docs"
