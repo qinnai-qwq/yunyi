@@ -37,7 +37,9 @@ PUBLIC_PATHS=(
   "Framework.vcxproj"
   "README.md"
   "SVG"
-  "docs"
+  # docs 只公开引擎向文档；CHANGELOG/Document/TROUBLESHOOTING/director-api 仅 master 保留
+  "docs/protocol.md"
+  "docs/rest-api.md"
   "icon.ico"
   "resource.rc"
   "sync_public.sh"
@@ -60,6 +62,15 @@ for stale in NetEngine app dist third_party webview2-sdk; do
   if git ls-files --error-unmatch "$stale" >/dev/null 2>&1; then
     echo "  移除废弃目录: $stale"
     git rm -r --cached --quiet "$stale" 2>/dev/null || true
+  fi
+done
+
+# 移除 public 分支上不公开的文档（含闭源 app 层内部细节，仅 master 保留）
+# 用 git rm -f（连工作区一起删）：否则后续 git add -A 会把残留文件又加回去
+for stale in docs/CHANGELOG.md docs/Document.md docs/TROUBLESHOOTING.md docs/director-api.md; do
+  if git ls-files --error-unmatch "$stale" >/dev/null 2>&1; then
+    echo "  移除不公开文档: $stale"
+    git rm -f --quiet "$stale" 2>/dev/null || true
   fi
 done
 

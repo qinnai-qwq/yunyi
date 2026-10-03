@@ -114,6 +114,8 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 
 ## 架构
 
+下面这张图是我给云驿定的骨架：玩家的连接先到中继，中继再跟房主拉一条加密隧道，房主把流量转进本地的 MC。整条链路上，只有中继是暴露在公网的。
+
 ### 中继模式（默认）
 
 ```
@@ -127,6 +129,8 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 **核心约束：** 外部代码只允许调用 `Director`（引擎唯一门面），不可直接访问引擎内部模块。
 
 ### 技术栈
+
+选型上我没怎么纠结，原则就一条：能用成熟库就用成熟库，自己能不造轮子就不造。
 
 - **语言：** C++17
 - **网络：** Windows IOCP（AcceptEx / ConnectEx / WSARecv / WSASend）+ UDP（WSARecvFrom / WSASendTo）
@@ -159,9 +163,7 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 │
 ├── docs/
 │   ├── protocol.md              控制帧协议规范
-│   ├── rest-api.md              REST API 手册
-│   ├── director-api.md          Director 公开接口手册
-│   └── CHANGELOG.md             开发日志
+│   └── rest-api.md              REST API 手册
 │
 ├── tools/                       测试工具
 ├── dist/                        分发目录
@@ -213,7 +215,7 @@ MC服务器 ◀─TCP─ ReliableUdpChannel ──UDP打洞──▶ ReliableUdp
 
 ## 控制帧协议
 
-房主端与中继之间通过 TLS-PSK 加密的控制信道（端口 40000）通信，帧格式：
+房主端和中继之间要说的话，我定成了下面这一套格式，走 TLS-PSK 加密的控制信道（端口 40000）：
 
 ```
 [1B magic] [1B type] [1B version] [1B reserved] [4B payload_len] [N bytes payload]
@@ -246,6 +248,8 @@ Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 
 ## 开发路线
 
+已经做完的打勾，还没做的空着。我想到什么就往这儿加，省得忘。
+
 - [x] 项目结构 + 架构设计
 - [x] Core/Framework 全部模块
 - [x] TLS-PSK 加密控制信道
@@ -270,4 +274,4 @@ Release 配置使用 `/MT`（静态链接 CRT），分发的 exe 仅依赖：
 
 ## 命名
 
-"驿"取古代驿站中转传递之意，"云"点出网络属性，呼应中继服务器"帮两边本来连不上的人搭一座桥"的核心功能。
+"驿"取的是古代驿站中转传递的意思，"云"点出网络属性。给软件起这个名字，说白了就是想让它干的那件事——帮两个本来连不上的人，中间搭一座桥。
